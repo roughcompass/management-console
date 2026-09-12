@@ -1,0 +1,33 @@
+{
+  "name": "management-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agentic UI Delivery Loop - Phase 1: anchored feedback on pinned previews",
+  "scripts": {
+    "build": "tsc -b packages/anchor-core packages/provenance packages/feedback-ui",
+    "typecheck": "tsc -b --noEmit packages/anchor-core packages/provenance packages/feedback-ui && tsc -p apps/preview-demo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demo": "pnpm --filter @adl/preview-demo dev",
+    "test:e2e": "pnpm --filter @adl/preview-demo e2e"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-syntax-jsx": "^7.27.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
