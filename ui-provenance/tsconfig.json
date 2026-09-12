@@ -1,0 +1,26 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src/**/*",
+    "bin/**/*",
+    "schemas/*.json"
+  ],
+  "exclude": [
+    "test/**",
+    "src/**/*.test.ts"
+  ]
+}

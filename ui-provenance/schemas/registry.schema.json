@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://de.dev/ui-provenance/schemas/registry-1.0.json",
+  "title": "UI Provenance registry",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "applicationId",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "applicationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "humanName",
+          "file",
+          "enclosingComponent",
+          "elementType",
+          "elementKind",
+          "explicitKey",
+          "astFingerprint",
+          "parentSourceId",
+          "order",
+          "siblingOrder",
+          "firstSeen",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "pattern": "^prv_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "humanName": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "enclosingComponent": {
+            "type": "string"
+          },
+          "elementType": {
+            "type": "string"
+          },
+          "elementKind": {
+            "enum": [
+              "host",
+              "application",
+              "salt"
+            ]
+          },
+          "explicitKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "astFingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "parentSourceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firstSeen": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "tombstoned"
+            ]
+          },
+          "tombstonedAt": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "siblingOrder": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

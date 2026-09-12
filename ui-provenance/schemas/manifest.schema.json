@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://de.dev/ui-provenance/schemas/manifest-1.0.json",
+  "title": "UI Provenance build manifest",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "applicationId",
+    "federation",
+    "repository",
+    "commitSha",
+    "buildId",
+    "packageVersions",
+    "registryHash",
+    "generatedAt",
+    "sources"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "applicationId": { "type": "string", "minLength": 1 },
+    "federation": {
+      "type": "object",
+      "required": ["name", "role", "exposes"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "enum": ["host", "remote"] },
+        "exposes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "repository": { "type": "string" },
+    "commitSha": { "type": "string" },
+    "buildId": { "type": "string" },
+    "packageVersions": { "type": "object", "additionalProperties": { "type": "string" } },
+    "registryHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "generatedAt": { "type": "string" },
+    "sources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "humanName",
+          "file",
+          "enclosingComponent",
+          "elementType",
+          "elementKind",
+          "parentSourceId",
+          "instrumented"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceId": { "type": "string" },
+          "humanName": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "column": { "type": "integer" },
+          "enclosingComponent": { "type": "string" },
+          "elementType": { "type": "string" },
+          "elementKind": { "enum": ["host", "application", "salt"] },
+          "parentSourceId": { "type": ["string", "null"] },
+          "library": {
+            "type": "object",
+            "required": ["name", "version", "component"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "component": { "type": "string" }
+            }
+          },
+          "instrumented": { "type": "boolean" },
+          "instrumentationNote": { "type": "string" }
+        }
+      }
+    }
+  }
+}

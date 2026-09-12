@@ -1,0 +1,82 @@
+{
+  "name": "@de/ui-provenance",
+  "version": "0.2.0",
+  "description": "UI Provenance Instrumenter: durable identity for reviewable elements in federated React MFEs",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "bin": {
+    "ui-provenance": "./dist/bin/ui-provenance.js"
+  },
+  "exports": {
+    "./core": {
+      "types": "./dist/src/core/index.d.ts",
+      "default": "./dist/src/core/index.js"
+    },
+    "./compiler": {
+      "types": "./dist/src/compiler/index.d.ts",
+      "default": "./dist/src/compiler/index.js"
+    },
+    "./vite": {
+      "types": "./dist/src/vite/index.d.ts",
+      "default": "./dist/src/vite/index.js"
+    },
+    "./webpack": {
+      "types": "./dist/src/webpack/index.d.ts",
+      "default": "./dist/src/webpack/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/src/runtime/index.d.ts",
+      "default": "./dist/src/runtime/index.js"
+    },
+    "./eslint": {
+      "types": "./dist/src/eslint/index.d.ts",
+      "default": "./dist/src/eslint/index.js"
+    },
+    "./module-federation": {
+      "types": "./dist/src/module-federation/index.d.ts",
+      "default": "./dist/src/module-federation/index.js"
+    },
+    "./schemas/*": "./schemas/*",
+    "./webpack/loader": {
+      "types": "./dist/src/webpack/loader.d.ts",
+      "default": "./dist/src/webpack/loader.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.29.0",
+    "@babel/parser": "^7.29.0",
+    "@babel/traverse": "^7.29.0",
+    "@babel/types": "^7.29.0",
+    "ajv": "^8.20.0",
+    "esbuild": "^0.25.0"
+  },
+  "peerDependencies": {
+    "@module-federation/runtime": ">=2",
+    "eslint": ">=9"
+  },
+  "peerDependenciesMeta": {
+    "@module-federation/runtime": {
+      "optional": true
+    },
+    "eslint": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@babel/plugin-syntax-typescript": "^7.27.1",
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__traverse": "^7.28.0",
+    "eslint": "^9.39.0"
+  }
+}
