@@ -1,0 +1,81 @@
+body {
+  margin: 0;
+  background: var(--salt-container-secondary-background, #0e1015);
+  color: var(--salt-content-primary-foreground, #e8eaf0);
+}
+
+* { box-sizing: border-box; }
+
+.shell { display: flex; flex-direction: column; min-height: 100vh; }
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--salt-spacing-200);
+  gap: var(--salt-spacing-200);
+  padding: var(--salt-spacing-100) var(--salt-spacing-200);
+  border-bottom: var(--salt-size-border) solid var(--salt-container-primary-borderColor);
+  background: var(--salt-container-primary-background);
+}
+.build-switch { display: flex; gap: var(--salt-spacing-100); }
+.bar > :last-child { margin-left: auto; }
+
+/* The toolbar marks the document while its panel is open; the Frame makes room
+   so the preview is never hidden underneath it. */
+:root[data-adl-panel='open'] .bar,
+:root[data-adl-panel='open'] .stage {
+  padding-right: var(--adl-panel-width, 400px);
+}
+
+.stage { flex: 1; display: flex; min-height: 0; }
+.preview { flex: 1; padding: var(--salt-spacing-300); overflow: auto; }
+
+.frame {
+  border: var(--salt-size-border) solid var(--salt-container-primary-borderColor);
+  background: var(--salt-container-primary-background);
+  overflow: hidden;
+}
+.frame-head {
+  display: flex;
+  align-items: center;
+  gap: var(--salt-spacing-300);
+  padding: var(--salt-spacing-150) var(--salt-spacing-200);
+  border-bottom: var(--salt-size-border) solid var(--salt-container-primary-borderColor);
+}
+.frame-nav { display: flex; gap: var(--salt-spacing-200); flex: 1; }
+.frame-nav a {
+  color: var(--salt-content-secondary-foreground);
+  text-decoration: none;
+  font-size: var(--salt-text-fontSize);
+}
+.frame-nav a.active {
+  color: var(--salt-content-primary-foreground);
+  border-bottom: 2px solid var(--salt-accent-borderColor);
+  padding-bottom: 2px;
+}
+.frame-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.frame-body > main { padding: var(--salt-spacing-200); min-width: 0; }
+.frame-body > aside {
+  padding: var(--salt-spacing-200);
+  border-left: var(--salt-size-border) solid var(--salt-container-primary-borderColor);
+  background: var(--salt-container-secondary-background);
+}
+
+.zone-loading { display: flex; align-items: center; gap: var(--salt-spacing-100); padding: var(--salt-spacing-200); }
+
+.mfe-head { display: flex; align-items: center; justify-content: space-between; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--salt-spacing-50);
+  text-transform: capitalize;
+  font-size: var(--salt-text-label-fontSize);
+}
+.badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.table-wrap {
+  border: var(--salt-size-border) solid var(--salt-container-primary-borderColor);
+  padding: var(--salt-spacing-150);
+}
+.limits { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--salt-spacing-200); }
+.limit-head { display: flex; justify-content: space-between; }
+.stack { display: inline-flex; flex-direction: column; }
