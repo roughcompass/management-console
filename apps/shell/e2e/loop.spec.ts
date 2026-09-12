@@ -99,13 +99,16 @@ test('keeps and reverts versions from the Versions view', async ({ page }) => {
   await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.4.1"]')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Back to Version 2' })).toBeVisible()
 
-  // Right? Approve it, and it is marked ready to deploy.
+  // Right? Approve it, and it is marked ready to deploy - on the version she
+  // is actually looking at, which is the whole point of the decision.
   await page.getByRole('button', { name: 'Back to Version 2' }).click()
   await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible()
   await page.getByRole('tab', { name: 'Versions' }).click()
-  await page.getByRole('button', { name: 'Approve for deployment' }).click()
-  await expect(page.getByText('Ready to deploy')).toBeVisible()
-  await expect(page.getByText(/Approved by Dana Whitfield/)).toBeVisible()
+  const viewing = page.locator('.adl-version[data-selected="true"]')
+  await expect(viewing).toContainText('Version 2')
+  await viewing.getByRole('button', { name: 'Approve for deployment' }).click()
+  await expect(viewing.getByText('Ready to deploy')).toBeVisible()
+  await expect(viewing.getByText(/Approved by Dana Whitfield/)).toBeVisible()
 })
 
 test('captures feedback on things that are not on screen', async ({ page }) => {

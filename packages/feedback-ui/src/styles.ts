@@ -157,6 +157,8 @@ export const feedbackStyles = `
 .adl-metric-value { font-size: 18px; font-weight: 600; }
 .adl-btn {
   padding: 4px 10px;
+  white-space: nowrap;
+  cursor: pointer;
   border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
   background: transparent;
   color: inherit;

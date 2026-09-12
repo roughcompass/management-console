@@ -12,6 +12,10 @@ const executablePath = process.env.PW_CHROMIUM_PATH
 export default defineConfig({
   testDir: './e2e',
   timeout: 45_000,
+  // Every test shares the same three dev servers, and the second version of
+  // payments-dash is transformed on its first request. Parallel workers all
+  // queue behind that one cold build and time out waiting for it.
+  workers: 1,
   use: {
     baseURL: 'http://localhost:5273',
     viewport: { width: 1440, height: 900 },

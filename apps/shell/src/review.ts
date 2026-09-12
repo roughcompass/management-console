@@ -7,7 +7,7 @@ import { getProvenanceRuntime } from '@de/ui-provenance/runtime'
 import { BUILDS } from './previews'
 import type { PreviewBuild } from './previews'
 import { onRemoteLoaded } from './remotes'
-import { selectPreview, selectedPreview } from './review-bridge'
+import { onPreviewChange, selectPreview, selectedPreview } from './review-bridge'
 
 /**
  * The whole review layer, in one module nothing in the application imports
@@ -167,7 +167,6 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
         request.comments.map((comment) => comment.commentId),
       )
       selectPreview(next)
-      push()
     },
 
     onApprove(version) {
@@ -180,6 +179,10 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
   })
 
   push()
+  // The version on screen has to reach the toolbar the moment it changes, not
+  // on the next poll: everything the reviewer then does - approving, going
+  // back - is about the version she is looking at.
+  const unsubscribePreview = onPreviewChange(push)
   const unsubscribeRemote = onRemoteLoaded(push)
   // Registration is asynchronous and driven by federation, not by React.
   const timer = setInterval(push, 1000)
@@ -187,6 +190,7 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
   return {
     recorder,
     stop() {
+      unsubscribePreview()
       unsubscribeRemote()
       clearInterval(timer)
       handle?.destroy()
