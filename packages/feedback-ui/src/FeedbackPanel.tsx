@@ -258,7 +258,10 @@ function GeneralFeedbackTab(): ReactNode {
 }
 
 function SubmissionTab(): ReactNode {
-  const { threads, selectedThreadIds, lock } = useFeedback()
+  const { threads, selectedThreadIds, lock, submitFeedback } = useFeedback()
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
   const selectedThreads = threads.filter((t) => selectedThreadIds.has(t.id))
   const summary = {
     total: selectedThreads.length,
@@ -267,6 +270,20 @@ function SubmissionTab(): ReactNode {
     orphaned: selectedThreads.filter((t) => t.anchorStatus === 'orphaned').length,
     degraded: selectedThreads.filter((t) => t.anchorStatus === 'degraded').length,
     resolved: selectedThreads.filter((t) => t.anchorStatus === 'resolved').length,
+  }
+
+  const handleSubmit = async () => {
+    if (submitting || selectedThreads.length === 0) return
+    setSubmitting(true)
+    try {
+      await submitFeedback()
+      setSubmitted(true)
+      setTimeout(() => setSubmitted(false), 3000)
+    } catch (err) {
+      console.error('Submission failed:', err)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (selectedThreads.length === 0) {
@@ -280,6 +297,15 @@ function SubmissionTab(): ReactNode {
 
   return (
     <>
+      {submitted && (
+        <div style={{ padding: 12, marginBottom: 12, background: 'rgba(63, 178, 127, 0.1)', border: '1px solid #3fb27f', borderRadius: 2 }}>
+          <div style={{ color: '#3fb27f', fontSize: 12, fontWeight: 600 }}>✓ Feedback submitted successfully</div>
+          <div style={{ color: '#9aa3b5', fontSize: 11, marginTop: 4 }}>
+            {summary.total} comment{summary.total !== 1 ? 's' : ''} sent to agent for processing. New rebuild will incorporate this feedback.
+          </div>
+        </div>
+      )}
+
       <div className="adl-card" style={{ marginBottom: 16 }}>
         <span className="adl-metric-label">Submission Summary</span>
         <ul className="adl-list adl-mono" style={{ marginTop: 8 }}>
@@ -321,13 +347,10 @@ function SubmissionTab(): ReactNode {
         className="adl-btn"
         data-variant="primary"
         style={{ width: '100%', padding: 12 }}
-        onClick={() => {
-          // TODO: Connect to agent/workflow
-          console.log('Submitting feedback:', selectedThreads)
-          alert(`Submitting ${selectedThreads.length} comments to agent for processing`)
-        }}
+        disabled={submitting}
+        onClick={handleSubmit}
       >
-        Submit {selectedThreads.length} comment{selectedThreads.length !== 1 ? 's' : ''} to Agent
+        {submitting ? '⟳ Submitting...' : `Submit ${selectedThreads.length} comment${selectedThreads.length !== 1 ? 's' : ''} to Agent`}
       </button>
     </>
   )

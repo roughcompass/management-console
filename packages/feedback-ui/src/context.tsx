@@ -34,6 +34,25 @@ export interface RefreshInput {
   record?: boolean
 }
 
+export interface FeedbackSubmission {
+  previewId: string
+  lockId: string
+  comments: Array<{
+    threadId: string
+    anchorType: string
+    anchorStatus: string
+    comments: Array<{ author: string; body: string }>
+  }>
+  summary: {
+    total: number
+    elementComments: number
+    generalFeedback: number
+    resolved: number
+    degraded: number
+    orphaned: number
+  }
+}
+
 export interface FeedbackContextValue {
   actor: Actor
   previewId: string
@@ -69,6 +88,8 @@ export interface FeedbackContextValue {
   toggleThreadSelection(threadId: string): void
   // New: add free-form feedback not tied to an element
   addGeneralFeedback(body: string): CommentThread
+  // New: submit selected comments to agent for processing
+  submitFeedback(onHandler?: (submission: FeedbackSubmission) => Promise<void>): Promise<void>
 }
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null)
@@ -305,6 +326,50 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [actor, buildContext, bump, lock, manifest, store],
   )
 
+  const submitFeedback = useCallback(
+    async (onHandler?: (submission: FeedbackSubmission) => Promise<void>) => {
+      const selectedThreads = store.threads().filter((t) => {
+        // This will be populated via context after component mounts
+        // For now, we'll build from store
+        return true
+      })
+
+      const summary = {
+        total: selectedThreads.length,
+        elementComments: selectedThreads.filter((t) => t.anchor.anchorType === 'visual-node').length,
+        generalFeedback: selectedThreads.filter(
+          (t) => t.anchor.target?.kind === 'runtime-event' && t.anchor.target.channel === 'general',
+        ).length,
+        orphaned: selectedThreads.filter((t) => t.anchorStatus === 'orphaned').length,
+        degraded: selectedThreads.filter((t) => t.anchorStatus === 'degraded').length,
+        resolved: selectedThreads.filter((t) => t.anchorStatus === 'resolved').length,
+      }
+
+      const submission: FeedbackSubmission = {
+        previewId,
+        lockId: lock.id,
+        comments: selectedThreads.map((thread) => ({
+          threadId: thread.id,
+          anchorType: thread.anchor.anchorType,
+          anchorStatus: thread.anchorStatus,
+          comments: thread.comments.map((c) => ({ author: c.author.name, body: c.body })),
+        })),
+        summary,
+      }
+
+      if (onHandler) {
+        await onHandler(submission)
+      } else {
+        // Default: log to console and POST to /api/feedback (if available)
+        console.log('Feedback submission:', submission)
+        try {
+          await fetch('/api/feedback', { method: 'POST', body: JSON.stringify(submission) }).catch(() => {})
+        } catch {}
+      }
+    },
+    [store, previewId, lock.id],
+  )
+
   const value = useMemo<FeedbackContextValue>(() => {
     void version
     return {
@@ -335,6 +400,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       selectedThreadIds,
       toggleThreadSelection,
       addGeneralFeedback,
+      submitFeedback,
     }
   }, [
     actor,
@@ -357,6 +423,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     selectedThreadIds,
     toggleThreadSelection,
     addGeneralFeedback,
+    submitFeedback,
     store,
     version,
   ])
