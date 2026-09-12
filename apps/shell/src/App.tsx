@@ -1,12 +1,25 @@
-import { loadProvenanceManifests } from '@adl/anchor-core'
+import { adaptUiProvenanceManifest, mergeProvenanceManifests } from '@adl/anchor-core'
 import type { BuildReport, ProvenanceManifest } from '@adl/anchor-core'
+import { getProvenanceRuntime } from '@de/ui-provenance/runtime'
 import type { FeedbackToolbarHandle, PreviewRecorder } from '@adl/feedback-ui'
 import { mountFeedbackToolbar } from '@adl/feedback-ui'
 import type { FeedbackRepository } from '@adl/feedback-store'
 import { Button, Text } from '@salt-ds/core'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy } from 'react'
 import { Frame } from './Frame'
-import { BUILDS, BUILD_REPORT_URL, MANIFEST_URLS } from './previews'
+
+// Preview-only, and dynamically imported so a production bundle does not carry
+// the review runtime at all.
+// The condition is statically replaced at build time, so the dynamic import
+// sits in a dead branch and the chunk is never emitted for production.
+const REVIEW_ENABLED = import.meta.env.MODE !== 'production'
+const ReviewLayerFixture = REVIEW_ENABLED
+  ? lazy(() =>
+      import('./ReviewLayerFixture').then((module) => ({ default: module.ReviewLayerFixture })),
+    )
+  : null
+import { BUILDS } from './previews'
 import type { PreviewBuild } from './previews'
 import { onRemoteLoaded, remoteComponent } from './remotes'
 
@@ -31,21 +44,45 @@ export function App({ recorder, repository }: AppProps) {
   )
   const Limits = useMemo(() => remoteComponent(build.remotes['limits-panel']!.module), [build])
 
-  const reloadManifests = useCallback(async () => {
-    // Every participant publishes its own manifest; the shell merges them.
-    const merged = await loadProvenanceManifests(MANIFEST_URLS)
-    setManifest(merged)
+  // The instrumenter's runtime already holds every registered build's manifest,
+  // so the toolbar reads them from there rather than fetching them a second
+  // time - and it learns about a remote at the moment federation does.
+  const reloadManifests = useCallback(() => {
+    const builds = getProvenanceRuntime().getBuilds()
+    if (builds.length === 0) return
+    setManifest(
+      mergeProvenanceManifests(
+        ...builds.map((build) => adaptUiProvenanceManifest(build.manifest as never)),
+      ),
+    )
+    setBuildReport({
+      buildId: builds.map((build) => build.buildId).join('+'),
+      commit: builds[0]!.commitSha,
+      generatedAt: new Date().toISOString(),
+      artifacts: [
+        ...builds.map((build) => ({
+          kind: 'remote' as const,
+          name: `${build.applicationId} (${build.federationRole})`,
+          value: build.manifestUrl,
+        })),
+        ...Object.entries(builds[0]!.manifest.packageVersions ?? {}).map(([name, version]) => ({
+          kind: 'dependency' as const,
+          name,
+          value: String(version),
+        })),
+      ],
+    })
   }, [])
 
   useEffect(() => {
-    void reloadManifests()
-    void fetch(BUILD_REPORT_URL)
-      .then((res) => res.json() as Promise<BuildReport>)
-      .then(setBuildReport)
-      .catch(() => {})
-    return onRemoteLoaded(() => {
-      void reloadManifests()
-    })
+    reloadManifests()
+    const unsubscribe = onRemoteLoaded(() => reloadManifests())
+    // Registration is asynchronous and driven by federation, not by React.
+    const timer = setInterval(reloadManifests, 1000)
+    return () => {
+      unsubscribe()
+      clearInterval(timer)
+    }
   }, [reloadManifests])
 
   // The Frame mounts the toolbar. The MFEs below know nothing about it.
@@ -117,6 +154,11 @@ export function App({ recorder, repository }: AppProps) {
           <Frame main={<Payments />} side={<Limits />} />
         </div>
       </div>
+      {ReviewLayerFixture ? (
+        <Suspense fallback={null}>
+          <ReviewLayerFixture />
+        </Suspense>
+      ) : null}
     </div>
   )
 }

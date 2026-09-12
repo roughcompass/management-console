@@ -79,12 +79,3 @@ export const BUILDS: PreviewBuild[] = [
     },
   },
 ]
-
-/** Where each participant publishes its provenance manifest. */
-export const MANIFEST_URLS = [
-  '/__provenance/manifest.json',
-  `${PAYMENTS_ORIGIN}/__provenance/manifest.json`,
-  `${LIMITS_ORIGIN}/__provenance/manifest.json`,
-]
-
-export const BUILD_REPORT_URL = '/__provenance/build-report.json'

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-09-12T01:37:02.166Z",
+  "entries": [
+    {
+      "component": "Button",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <button>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Input",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Checkbox",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <label>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Dropdown",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <button>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Card",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Link",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <a>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Dialog",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "Table",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <table>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    },
+    {
+      "component": "SaltProvider",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T01:37:02.166Z"
+    }
+  ]
+}

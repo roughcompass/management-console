@@ -1,4 +1,16 @@
-import { Button, Card, StackLayout, TBody, TD, TH, THead, TR, Table, Text } from '@salt-ds/core'
+import {
+  Button,
+  Card,
+  Dialog,
+  StackLayout,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  Table,
+  Text,
+} from '@salt-ds/core'
 import { useEffect, useState } from 'react'
 import type { Position } from '../data'
 import { fetchPositions, money } from '../data'
@@ -13,7 +25,7 @@ export function StatusBadge({ status, instanceKey }: { status: Position['status'
   return (
     <span
       className="badge"
-      data-prov-key={instanceKey}
+      data-de-instance-key={instanceKey}
       data-tokens={`${STATUS_TOKEN[status]}=color;--salt-palette-corner=border-radius`}
       style={{ color: `var(${STATUS_TOKEN[status]})` }}
     >
@@ -53,7 +65,7 @@ export function PositionsTable({ positions }: { positions: Position[] }) {
       </THead>
       <TBody>
         {positions.map((position) => (
-          <TR key={position.id} data-prov-key={position.id}>
+          <TR key={position.id} data-de-instance-key={position.id}>
             <TD>{position.account}</TD>
             <TD>{position.instrument}</TD>
             <TD>{money(position.notional, position.ccy)}</TD>
@@ -70,6 +82,7 @@ export function PositionsTable({ positions }: { positions: Position[] }) {
 /** payments-dash 2.4.1 */
 export default function PaymentsDash() {
   const [positions, setPositions] = useState<Position[]>([])
+  const [instructionOpen, setInstructionOpen] = useState(false)
 
   useEffect(() => {
     void fetchPositions('8891').then(setPositions).catch(() => {})
@@ -84,12 +97,23 @@ export default function PaymentsDash() {
             appearance="solid"
             sentiment="accented"
             data-tokens="--salt-actionable-accented-background=background-color"
+            onClick={() => setInstructionOpen(true)}
           >
             New instruction
           </Button>
         </div>
         <SummaryCard positions={positions} />
         <PositionsTable positions={positions} />
+        {/* Salt renders a dialog through a portal, so its DOM is not under the
+            MFE root. Provenance has to survive that. */}
+        <Dialog open={instructionOpen} onOpenChange={setInstructionOpen}>
+          <div className="dialog-body" data-de-instance-key="instruction-dialog">
+            <Text>Confirm the instruction before sending it for approval.</Text>
+            <Button appearance="bordered" onClick={() => setInstructionOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </Dialog>
       </StackLayout>
     </section>
   )

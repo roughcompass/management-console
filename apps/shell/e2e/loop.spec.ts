@@ -29,13 +29,14 @@ async function rebuild(page: Page) {
 test('mounts two federated remotes under one instrumented Frame', async ({ page }) => {
   await expect(page.locator('[data-mfe="payments-dash"]')).toBeVisible()
   await expect(page.locator('[data-mfe="limits-panel"]')).toBeVisible()
-  // The shell and both remotes are built separately and instrumented separately.
-  const scopes = await page.evaluate(() => {
-    const manifest = (globalThis as { __ADL_PROVENANCE__?: { scopes?: Record<string, unknown> } })
-      .__ADL_PROVENANCE__
-    return Object.keys(manifest?.scopes ?? {})
-  })
-  expect(scopes.sort()).toEqual(['limits-panel', 'payments-dash', 'shell'])
+  // The shell and both remotes are built separately and instrumented
+  // separately, so every zone carries its own build's source ids.
+  await expect(
+    page.locator('[data-mfe="payments-dash"] [data-de-provenance-id]').first(),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-mfe="limits-panel"] [data-de-provenance-id]').first(),
+  ).toBeVisible()
 })
 
 test('anchors a comment to a node inside a remote', async ({ page }) => {
@@ -45,11 +46,14 @@ test('anchors a comment to a node inside a remote', async ({ page }) => {
   await expect(pin).toHaveCount(1)
   await expect(pin).toHaveAttribute('data-status', 'resolved')
   // The path crosses the federation boundary: Frame and zone from the host
-  // contract, components from the remote's own build.
+  // contract, components from the remote's own build. PositionsTable appears
+  // now that the Salt table rows are instrumented too.
   await expect(page.locator(`${THREAD} .adl-mono`).first()).toHaveText(
-    'Frame[cib-frame]@3.1 > Zone[main] > MFE[payments-dash]@2.4.1 > PaymentsDash > StatusBadge',
+    'Frame[cib-frame]@3.1 > Zone[main] > MFE[payments-dash]@2.4.1 > PaymentsDash > PositionsTable > StatusBadge',
   )
-  await expect(page.locator(`${THREAD} .adl-mono`).nth(1)).toContainText('payments-dash · src/v1/')
+  // The application id comes from the remote's own manifest, not from its
+  // federation name: they are allowed to differ, and here they do.
+  await expect(page.locator(`${THREAD} .adl-mono`).nth(1)).toContainText('payments-web · src/v1/')
 })
 
 test('carries a comment across a remote version bump and says how it held', async ({ page }) => {
@@ -103,11 +107,11 @@ test('captures feedback on things that are not on screen', async ({ page }) => {
   ).toBeVisible()
 
   await page.getByRole('tab', { name: 'Build' }).click()
-  await expect(page.getByText('PREVIEW_TTL_MINUTES')).toBeVisible()
   // Inactive tab panels stay mounted, so scope to what is actually on screen.
   await expect(
-    page.locator('.adl-card:visible', { hasText: 'payments_dash' }).first(),
-  ).toContainText('remoteEntry.js')
+    page.locator('.adl-card:visible', { hasText: 'payments-web (remote)' }).first(),
+  ).toContainText('ui-provenance-manifest.json')
+  await expect(page.locator('.adl-card:visible', { hasText: '@salt-ds/core' }).first()).toBeVisible()
 
   await page.getByRole('tab', { name: 'Comments' }).click()
   const thread = page.locator(THREAD, { hasText: 'entitlement-gated hook' })

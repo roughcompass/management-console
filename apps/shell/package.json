@@ -4,15 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "DE_UI_PROVENANCE_ENABLED=true vite",
     "build": "vite build",
     "preview": "vite preview --port 5273",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "build:preview": "DE_UI_PROVENANCE_ENABLED=true vite build --mode preview"
   },
   "dependencies": {
     "@adl/anchor-core": "workspace:*",
     "@adl/feedback-store": "workspace:*",
     "@adl/feedback-ui": "workspace:*",
+    "@de/ui-provenance": "workspace:*",
     "@module-federation/runtime": "^2.9.0",
     "@salt-ds/core": "1.67.0",
     "@salt-ds/icons": "^1.18.0",
@@ -21,7 +23,6 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@adl/provenance": "workspace:*",
     "@module-federation/vite": "^1.21.6",
     "@playwright/test": "^1.63.0",
     "@types/react": "^19.2.0",

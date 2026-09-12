@@ -18,7 +18,7 @@ export function StatusBadge({ status, instanceKey }: { status: Position['status'
   return (
     <span
       className="badge badge--pill"
-      data-prov-key={instanceKey}
+      data-de-instance-key={instanceKey}
       data-tokens={`${STATUS_TOKEN[status]}=color;--salt-palette-corner=border-radius`}
       style={{ color: `var(${STATUS_TOKEN[status]})` }}
     >
@@ -42,7 +42,7 @@ export function PositionsTable({ positions }: { positions: Position[] }) {
         </THead>
         <TBody>
           {positions.map((position) => (
-            <TR key={position.id} data-prov-key={position.id}>
+            <TR key={position.id} data-de-instance-key={position.id}>
               <TD>
                 <span className="stack">{position.account}</span>
               </TD>

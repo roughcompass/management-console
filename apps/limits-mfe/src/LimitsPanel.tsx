@@ -26,7 +26,7 @@ function money(value: number): string {
 
 export function LimitBar({ limit }: { limit: Limit }) {
   return (
-    <li data-prov-key={limit.id}>
+    <li data-de-instance-key={limit.id}>
       <StackLayout gap={0.5}>
         <div className="limit-head">
           <Text>{limit.name}</Text>

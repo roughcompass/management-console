@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "DE_UI_PROVENANCE_ENABLED=true vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:preview": "DE_UI_PROVENANCE_ENABLED=true vite build --mode preview"
   },
   "dependencies": {
+    "@de/ui-provenance": "workspace:*",
     "@salt-ds/core": "1.67.0",
     "@salt-ds/icons": "^1.18.0",
     "@salt-ds/theme": "^1.45.0",
@@ -16,7 +18,6 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@adl/provenance": "workspace:*",
     "@module-federation/vite": "^1.21.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

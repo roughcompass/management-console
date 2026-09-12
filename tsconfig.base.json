@@ -27,9 +27,6 @@
       "@adl/anchor-core": [
         "packages/anchor-core/src/index.ts"
       ],
-      "@adl/provenance": [
-        "packages/provenance/src/index.ts"
-      ],
       "@adl/feedback-ui": [
         "packages/feedback-ui/src/index.ts"
       ],

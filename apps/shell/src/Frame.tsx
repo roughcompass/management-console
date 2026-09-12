@@ -1,6 +1,7 @@
 import { Spinner, Text } from '@salt-ds/core'
 import { Suspense } from 'react'
 import type { ReactNode } from 'react'
+import { BoundaryProbes } from './BoundaryProbes'
 
 /**
  * The host Frame supplies the zone and MFE segments of every semantic path.
@@ -27,6 +28,7 @@ export function Frame({ main, side }: { main: ReactNode; side: ReactNode }) {
         </main>
         <aside data-zone="side">
           <Suspense fallback={<Zoneloading name="limits-panel" />}>{side}</Suspense>
+          <BoundaryProbes />
         </aside>
       </div>
     </div>
