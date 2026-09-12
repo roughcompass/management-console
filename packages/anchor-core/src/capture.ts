@@ -45,7 +45,8 @@ export function visibleText(element: Element): string {
   const doc = element.ownerDocument
   if (!doc) return ''
   const walker = doc.createTreeWalker(element, 4 /* NodeFilter.SHOW_TEXT */)
-  const parts: string[] = []
+  let out = ''
+  let lastParent: Node | null = null
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     let skip = false
     for (let up = node.parentElement; up && up !== element.parentElement; up = up.parentElement) {
@@ -54,9 +55,14 @@ export function visibleText(element: Element): string {
         break
       }
     }
-    if (!skip && node.textContent) parts.push(node.textContent)
+    if (skip || !node.textContent) continue
+    // Adjacent text nodes in one element are one run ("88" + "%"); text from
+    // different elements is separated, the way it reads on the page.
+    if (out && node.parentNode !== lastParent) out += ' '
+    out += node.textContent
+    lastParent = node.parentNode
   }
-  return parts.join(' ').replace(/\s+/g, ' ').trim()
+  return out.replace(/\s+/g, ' ').trim()
 }
 
 function regionOf(element: Element, root: Element | Document | undefined): string | undefined {

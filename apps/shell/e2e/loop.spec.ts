@@ -73,7 +73,9 @@ test('carries a comment across a remote version bump and says how it held', asyn
   // The component name and the authored instance key carry the anchor instead,
   // which is a weaker claim than an exact id match - so the thread says
   // degraded rather than pretending nothing moved.
-  await expect(thread.locator('.adl-chip[data-status="degraded"]')).toBeVisible()
+  // With details on, a thread in trouble carries the reviewer's chip and the
+  // technical one; either will do.
+  await expect(thread.locator('.adl-chip[data-status="degraded"]').first()).toBeVisible()
   await expect(thread).toContainText('provenance · 0.75')
   await expect(thread.locator('.adl-stale')).toContainText('mfes.payments-dash: 2.4.1 → 2.5.0')
   await expect(page.locator('.adl-pin')).toHaveCount(1)
@@ -86,7 +88,7 @@ test('orphans a comment on a node the rebuild removed, with the crop to show wha
   await rebuild(page)
 
   const thread = page.locator(THREAD).first()
-  await expect(thread.locator('.adl-chip[data-status="orphaned"]')).toBeVisible()
+  await expect(thread.locator('.adl-chip[data-status="orphaned"]').first()).toBeVisible()
   await expect(page.getByText("1 comment can't find what it was about in this build")).toBeVisible()
   await expect(page.locator('.adl-metric', { hasText: 'ORPHAN RATE' })).toContainText('100%')
   await expect(page.locator('.adl-pin')).toHaveCount(0)
