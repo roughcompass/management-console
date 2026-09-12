@@ -1,5 +1,5 @@
 import type { Actor, ContextLock, ProvenanceManifest } from '@adl/anchor-core'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
@@ -48,7 +48,17 @@ function Harness({
 }) {
   const previewRef = useRef<HTMLDivElement>(null)
   return (
-    <FeedbackProvider actor={designer} lock={lock} manifest={manifest} buildId={buildId} previewRef={previewRef}>
+    <FeedbackProvider
+      actor={designer}
+      previewId="pr-1042"
+      lock={lock}
+      manifest={manifest}
+      buildId={buildId}
+      previewRef={previewRef}
+      // The settle delay exists for lazily loaded remotes; tests drive the DOM
+      // themselves and would otherwise wait on a timer for no reason.
+      settleMs={0}
+    >
       <div ref={previewRef} data-testid="preview" dangerouslySetInnerHTML={{ __html: html }} />
       <Probe selector={selector} body={body} />
       <FeedbackPanel />
@@ -106,7 +116,7 @@ describe('anchored feedback across a rebuild', () => {
     restore()
   })
 
-  it('keeps the comment attached after a rebuild, and marks how it held', () => {
+  it('keeps the comment attached after a rebuild, and marks how it held', async () => {
     const props = {
       selector: '[data-prov="m1:9:5"]',
       body: 'this badge is the wrong blue',
@@ -120,13 +130,13 @@ describe('anchored feedback across a rebuild', () => {
       <Harness html={htmlV2()} lock={lockV2} manifest={manifestV2} buildId="build-b" {...props} />,
     )
 
+    await waitFor(() => expect(chip('degraded')).not.toBeNull())
     expect(screen.getByText('this badge is the wrong blue')).toBeDefined()
-    expect(chip('degraded')).not.toBeNull()
     expect(screen.getByText(/written against an older context lock/)).toBeDefined()
     expect(screen.getByText(/mfes.payments-dash: 2.4.1/)).toBeDefined()
   })
 
-  it('reports the orphan rate and says what the chain tried', () => {
+  it('reports the orphan rate and says what the chain tried', async () => {
     const props = {
       selector: '[data-prov="m1:31:7"]',
       body: 'this heading is too quiet',
@@ -140,7 +150,9 @@ describe('anchored feedback across a rebuild', () => {
       <Harness html={htmlV2()} lock={lockV2} manifest={manifestV2} buildId="build-b" {...props} />,
     )
 
-    expect(screen.getByText('1 lost their anchor in this build')).toBeDefined()
+    await waitFor(() =>
+      expect(screen.getByText('1 lost their anchor in this build')).toBeDefined(),
+    )
     expect(screen.getByText('100%')).toBeDefined()
     expect(screen.getByText(/why \(5 levels tried\)/)).toBeDefined()
     expect(document.querySelector('.adl-pin')).toBeNull()

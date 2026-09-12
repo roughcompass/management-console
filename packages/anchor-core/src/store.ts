@@ -146,10 +146,16 @@ export class FeedbackStore {
 
   /**
    * Run the whole open set through the chain against a new build. Returns the
-   * orphan snapshot for that pass so a preview can show the number instead of
+   * orphan snapshot for that build so a preview can show the number instead of
    * a designer discovering it by scrolling.
+   *
+   * Pass `record: false` to re-resolve without metering, for the passes that
+   * only keep pins attached as the preview's DOM moves under them.
    */
-  reanchor(ctx: ResolutionContext, meta: { buildId?: string } = {}): OrphanSnapshot {
+  reanchor(
+    ctx: ResolutionContext,
+    meta: { buildId?: string; record?: boolean } = {},
+  ): OrphanSnapshot {
     const buildId = meta.buildId ?? ctx.lock.id
     this.lockValue = ctx.lock
     this.buildIdValue = buildId
@@ -163,7 +169,10 @@ export class FeedbackStore {
       thread.stale = isStale(thread.anchor.contextLockId, ctx.lock)
       const capturedLock = this.knownLocks.get(thread.anchor.contextLockId)
       thread.staleAgainst = capturedLock ? diffContextLock(capturedLock, ctx.lock) : undefined
-      this.meter.record(resolution, { buildId, lockId: ctx.lock.id })
+      // Only one pass per build is metered. A preview re-resolves whenever its
+      // DOM churns - a lazy remote arriving, data loading - and counting those
+      // would report an orphan rate for a half-rendered page.
+      if (meta.record !== false) this.meter.record(resolution, { buildId, lockId: ctx.lock.id })
     }
 
     const snapshot = this.meter.snapshot(buildId)

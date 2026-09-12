@@ -5,11 +5,19 @@ import type {
   AnchorStatus,
   ContextLockDiffEntry,
 } from '@adl/anchor-core'
+import { StatusIndicator, Text } from '@salt-ds/core'
 import type { ReactNode } from 'react'
+
+const SALT_STATUS = {
+  resolved: 'success',
+  degraded: 'warning',
+  orphaned: 'error',
+} as const
 
 export function StatusChip({ status }: { status: AnchorStatus }): ReactNode {
   return (
     <span className="adl-chip" data-status={status}>
+      <StatusIndicator status={SALT_STATUS[status]} size={1} />
       {status}
     </span>
   )
@@ -60,6 +68,8 @@ export function AnchorSummary({
 
   const path = anchor.semantic ? formatSemanticPath(anchor.semantic, { includeElement: false }) : '—'
   const prov = anchor.provenance
+  const degraded = resolution && resolution.status !== 'resolved'
+
   return (
     <div>
       <div className="adl-mono" title={path}>
@@ -67,17 +77,23 @@ export function AnchorSummary({
       </div>
       {prov ? (
         <div className="adl-mono">
-          {prov.file}:{prov.line} · {prov.component}
+          {prov.scope} · {prov.file}:{prov.line} · {prov.component}
           {prov.instanceKey ? ` · key ${prov.instanceKey}` : ''}
         </div>
       ) : null}
       {anchor.tokens?.length ? (
         <div className="adl-mono">tokens: {anchor.tokens.map((t) => t.token).join(', ')}</div>
       ) : null}
-      {resolution && resolution.status !== 'resolved' ? (
+      {/* The crop is triage evidence: when an anchor is in trouble, it is the
+          only way to show what the comment was actually about. */}
+      {degraded && anchor.visual?.crop ? (
+        <img className="adl-crop" src={anchor.visual.crop} alt="what this comment was left on" />
+      ) : null}
+      {degraded ? (
         <details>
           <summary className="adl-mono">
-            why ({resolution.attempts.length} {resolution.attempts.length === 1 ? 'level' : 'levels'} tried)
+            why ({resolution.attempts.length} {resolution.attempts.length === 1 ? 'level' : 'levels'}{' '}
+            tried)
           </summary>
           <ul className="adl-list adl-mono">
             {resolution.attempts.map((attempt) => (
@@ -93,8 +109,8 @@ export function AnchorSummary({
 }
 
 /**
- * Feedback written against version N and read at N+2 is flagged, never
- * silently carried forward. The diff says exactly which pin moved.
+ * Feedback written against version N and read at N+2 is flagged, never silently
+ * carried forward. The diff says exactly which pinned input moved.
  */
 export function StaleNotice({ entries }: { entries?: ContextLockDiffEntry[] }): ReactNode {
   if (!entries?.length) return null
@@ -114,7 +130,7 @@ export function StaleNotice({ entries }: { entries?: ContextLockDiffEntry[] }): 
 export function Metric({ value, label }: { value: string; label: string }): ReactNode {
   return (
     <div className="adl-metric">
-      <span className="adl-metric-value">{value}</span>
+      <Text styleAs="h3">{value}</Text>
       <span className="adl-metric-label">{label}</span>
     </div>
   )

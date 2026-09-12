@@ -1,6 +1,7 @@
 import { OVERLAY_ATTR, buildSemanticPath, formatSemanticPath } from '@adl/anchor-core'
+import { Button, MultilineInput, StackLayout } from '@salt-ds/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useFeedback } from './context.js'
 import { useFeedbackStyles } from './styles.js'
@@ -27,16 +28,21 @@ export function FeedbackLayer(): ReactNode {
     threads,
     elementFor,
     commentOnElement,
+    captureCrop,
     selectThread,
     selectedThreadId,
+    setPanelOpen,
     previewRef,
+    overlayContainer,
     manifest,
   } = useFeedback()
 
   const [hovered, setHovered] = useState<Element | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [body, setBody] = useState('')
+  const [saving, setSaving] = useState(false)
   const [, setTick] = useState(0)
-  const bodyRef = useRef<HTMLTextAreaElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const reposition = useCallback(() => setTick((t) => t + 1), [])
 
@@ -71,7 +77,7 @@ export function FeedbackLayer(): ReactNode {
     const onClick = (event: MouseEvent) => {
       const element = document.elementFromPoint(event.clientX, event.clientY)
       if (!insidePreview(element)) return
-      // The preview is a running app: a pick must not also trigger its handlers.
+      // The preview is a running app: a pick must not also fire its handlers.
       event.preventDefault()
       event.stopPropagation()
       setDraft({ element, x: event.clientX, y: event.clientY })
@@ -92,30 +98,34 @@ export function FeedbackLayer(): ReactNode {
   }, [insidePreview, picking, setPicking])
 
   useEffect(() => {
-    if (draft) bodyRef.current?.focus()
+    if (draft) inputRef.current?.focus()
   }, [draft])
 
-  if (typeof document === 'undefined') return null
+  if (!overlayContainer) return null
+
+  const pathOf = (element: Element) =>
+    formatSemanticPath(buildSemanticPath(element, manifest, previewRef.current ?? undefined), {
+      includeElement: false,
+    })
 
   const hoveredRect = hovered?.getBoundingClientRect()
-  const hoveredLabel = hovered
-    ? formatSemanticPath(buildSemanticPath(hovered, manifest, previewRef.current ?? undefined), {
-        includeElement: false,
-      })
-        .split(' > ')
-        .slice(-2)
-        .join(' > ')
-    : ''
-
+  const hoveredLabel = hovered ? pathOf(hovered).split(' > ').slice(-2).join(' > ') : ''
   const open = threads.filter((thread) => thread.status === 'open')
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const body = bodyRef.current?.value.trim()
-    if (!draft || !body) return
-    const thread = commentOnElement(draft.element, body)
+    const text = body.trim()
+    if (!draft || !text || saving) return
+    setSaving(true)
+    // The crop is captured before the thread exists, because the next rebuild
+    // may be the reason anyone ever looks at it.
+    const crop = await captureCrop(draft.element)
+    const thread = commentOnElement(draft.element, text, { crop })
     selectThread(thread.id)
+    setPanelOpen(true)
+    setBody('')
     setDraft(null)
+    setSaving(false)
   }
 
   return createPortal(
@@ -130,7 +140,9 @@ export function FeedbackLayer(): ReactNode {
             height: hoveredRect.height,
           }}
         >
-          <span className="adl-highlight-label">{hoveredLabel || hovered?.tagName.toLowerCase()}</span>
+          <span className="adl-highlight-label">
+            {hoveredLabel || hovered?.tagName.toLowerCase()}
+          </span>
         </div>
       ) : null}
 
@@ -148,7 +160,10 @@ export function FeedbackLayer(): ReactNode {
             data-selected={selectedThreadId === thread.id}
             style={{ left: rect.left, top: rect.top }}
             title={thread.comments[0]?.body}
-            onClick={() => selectThread(thread.id)}
+            onClick={() => {
+              selectThread(thread.id)
+              setPanelOpen(true)
+            }}
           >
             {index + 1}
           </button>
@@ -160,28 +175,34 @@ export function FeedbackLayer(): ReactNode {
           className="adl-composer"
           style={{
             left: clamp(draft.x, 12, window.innerWidth - 332),
-            top: clamp(draft.y + 12, 12, window.innerHeight - 180),
+            top: clamp(draft.y + 12, 12, window.innerHeight - 200),
           }}
           onSubmit={submit}
         >
-          <div className="adl-mono" style={{ marginBottom: 6 }}>
-            {formatSemanticPath(
-              buildSemanticPath(draft.element, manifest, previewRef.current ?? undefined),
-              { includeElement: false },
-            )}
-          </div>
-          <textarea ref={bodyRef} placeholder="What should change here?" />
-          <div className="adl-row" style={{ marginTop: 8, justifyContent: 'flex-end' }}>
-            <button type="button" className="adl-btn" onClick={() => setDraft(null)}>
-              Cancel
-            </button>
-            <button type="submit" className="adl-btn" data-variant="primary">
-              Comment
-            </button>
-          </div>
+          <StackLayout gap={1}>
+            <div className="adl-mono">{pathOf(draft.element)}</div>
+            <MultilineInput
+              textAreaRef={inputRef}
+              value={body}
+              rows={3}
+              placeholder="What should change here?"
+              textAreaProps={{
+                'aria-label': 'comment',
+                onChange: (event) => setBody(event.target.value),
+              }}
+            />
+            <div className="adl-row" style={{ justifyContent: 'flex-end' }}>
+              <Button appearance="transparent" type="button" onClick={() => setDraft(null)}>
+                Cancel
+              </Button>
+              <Button appearance="solid" sentiment="accented" type="submit" disabled={saving}>
+                Comment
+              </Button>
+            </div>
+          </StackLayout>
         </form>
       ) : null}
     </div>,
-    document.body,
+    overlayContainer,
   )
 }

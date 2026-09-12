@@ -6,7 +6,19 @@
     "outDir": "dist",
     "types": []
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
-  "references": [{ "path": "../anchor-core" }]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ],
+  "references": [
+    {
+      "path": "../anchor-core"
+    },
+    {
+      "path": "../feedback-store"
+    }
+  ]
 }

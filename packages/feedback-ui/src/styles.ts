@@ -2,20 +2,36 @@ import { useEffect } from 'react'
 
 const STYLE_ID = 'adl-feedback-styles'
 
+/**
+ * Geometry and chrome only. Colour, type and spacing come from Salt tokens, so
+ * the toolbar follows whatever theme the Frame is running.
+ *
+ * Every rule is scoped under `.adl-root`, and the root sets the properties a
+ * preview's global CSS is most likely to leak (box-sizing, font, line-height).
+ * Full isolation would need a shadow root, which Salt's runtime CSS injection
+ * does not target in this version - see docs/embedding.md.
+ */
 export const feedbackStyles = `
 .adl-root {
-  --adl-bg: #14161c;
-  --adl-bg-soft: #1c1f27;
-  --adl-line: #2b303b;
-  --adl-text: #e8eaf0;
-  --adl-muted: #9aa3b5;
-  --adl-accent: #5b8dff;
-  --adl-resolved: #3fb27f;
-  --adl-degraded: #e0a33e;
-  --adl-orphaned: #e4685d;
-  color: var(--adl-text);
-  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-sizing: border-box;
+  font-family: var(--salt-text-fontFamily, ui-sans-serif, system-ui, sans-serif);
+  font-size: var(--salt-text-fontSize, 13px);
+  line-height: var(--salt-text-lineHeight, 1.4);
+  color: var(--salt-content-primary-foreground, #e8eaf0);
 }
+.adl-root *, .adl-root *::before, .adl-root *::after { box-sizing: inherit; }
+
+.adl-host {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+.adl-host .adl-dock,
+.adl-host .adl-panel,
+.adl-host .adl-composer,
+.adl-host .adl-pin { pointer-events: auto; }
+
 .adl-overlay {
   position: fixed;
   inset: 0;
@@ -23,13 +39,13 @@ export const feedbackStyles = `
   pointer-events: none;
 }
 .adl-overlay > * { pointer-events: auto; }
+
 .adl-highlight {
   position: fixed;
-  border: 2px solid var(--adl-accent);
-  border-radius: 3px;
-  background: rgba(91, 141, 255, 0.12);
+  border: 2px solid var(--salt-accent-borderColor, #2d7ff9);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--salt-accent-background, #2d7ff9) 14%, transparent);
   pointer-events: none;
-  transition: all 60ms linear;
 }
 .adl-highlight-label {
   position: absolute;
@@ -37,15 +53,16 @@ export const feedbackStyles = `
   bottom: 100%;
   margin-bottom: 4px;
   padding: 2px 6px;
-  background: var(--adl-accent);
-  color: #fff;
-  border-radius: 3px;
-  font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--salt-accent-background, #2d7ff9);
+  color: var(--salt-content-primary-foreground-inverse, #fff);
+  border-radius: 2px;
+  font: 11px/1.3 var(--salt-text-code-fontFamily, ui-monospace, monospace);
   white-space: nowrap;
   max-width: 60vw;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .adl-pin {
   position: fixed;
   min-width: 22px;
@@ -53,139 +70,107 @@ export const feedbackStyles = `
   padding: 0 6px;
   transform: translate(-50%, -50%);
   border-radius: 11px;
-  border: 2px solid #fff;
-  background: var(--adl-accent);
-  color: #fff;
-  font: 600 11px/18px ui-sans-serif, system-ui, sans-serif;
+  border: 2px solid var(--salt-container-primary-background, #fff);
+  background: var(--salt-accent-background, #2d7ff9);
+  color: var(--salt-content-primary-foreground-inverse, #fff);
+  font: 600 11px/18px var(--salt-text-fontFamily, system-ui, sans-serif);
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--salt-overlayable-shadow-popout, 0 2px 8px rgba(0, 0, 0, 0.35));
 }
-.adl-pin[data-status='degraded'] { background: var(--adl-degraded); }
-.adl-pin[data-status='orphaned'] { background: var(--adl-orphaned); }
-.adl-pin[data-selected='true'] { outline: 3px solid rgba(91, 141, 255, 0.5); }
+.adl-pin[data-status='degraded'] { background: var(--salt-status-warning-borderColor, #e0a33e); }
+.adl-pin[data-status='orphaned'] { background: var(--salt-status-error-borderColor, #e4685d); }
+.adl-pin[data-selected='true'] { outline: 3px solid color-mix(in srgb, var(--salt-accent-background, #2d7ff9) 45%, transparent); }
+
 .adl-composer {
   position: fixed;
   width: 320px;
-  padding: 12px;
-  background: var(--adl-bg);
-  border: 1px solid var(--adl-line);
-  border-radius: 8px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  padding: var(--salt-spacing-100, 8px);
+  background: var(--salt-container-primary-background, #1c1f27);
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  border-radius: var(--salt-palette-corner, 0);
+  box-shadow: var(--salt-overlayable-shadow-popout, 0 16px 40px rgba(0, 0, 0, 0.45));
 }
-.adl-composer textarea {
-  width: 100%;
-  min-height: 68px;
-  resize: vertical;
-  background: var(--adl-bg-soft);
-  color: inherit;
-  border: 1px solid var(--adl-line);
-  border-radius: 6px;
-  padding: 8px;
-  font: inherit;
+
+.adl-dock {
+  position: fixed;
+  bottom: var(--salt-spacing-200, 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--salt-spacing-100, 8px);
+  padding: var(--salt-spacing-75, 6px) var(--salt-spacing-100, 8px);
+  background: var(--salt-container-primary-background, #1c1f27);
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  box-shadow: var(--salt-overlayable-shadow-popout, 0 10px 30px rgba(0, 0, 0, 0.45));
 }
+
 .adl-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 100vw;
   display: flex;
   flex-direction: column;
-  width: 380px;
-  max-height: 100%;
-  background: var(--adl-bg);
-  border-left: 1px solid var(--adl-line);
+  background: var(--salt-container-primary-background, #14161c);
+  border-left: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  box-shadow: var(--salt-overlayable-shadow-popout, -8px 0 30px rgba(0, 0, 0, 0.4));
 }
-.adl-panel-header { padding: 12px 14px; border-bottom: 1px solid var(--adl-line); }
-.adl-panel-body { overflow: auto; padding: 8px 10px 20px; }
-.adl-tabs { display: flex; gap: 4px; padding: 8px 10px 0; }
-.adl-tab {
-  flex: 1;
-  padding: 6px 4px;
-  border: 1px solid transparent;
-  border-radius: 6px 6px 0 0;
-  background: transparent;
-  color: var(--adl-muted);
-  font: inherit;
-  cursor: pointer;
+.adl-panel-header { padding: var(--salt-spacing-150, 12px); border-bottom: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b); }
+.adl-panel-body { overflow: auto; padding: var(--salt-spacing-100, 8px); flex: 1; }
+
+.adl-card { padding: var(--salt-spacing-100, 8px); margin-bottom: var(--salt-spacing-100, 8px); }
+.adl-card[data-selected='true'] { border-color: var(--salt-accent-borderColor, #2d7ff9); }
+.adl-crop {
+  display: block;
+  max-width: 100%;
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  margin: var(--salt-spacing-50, 4px) 0;
 }
-.adl-tab[aria-selected='true'] {
-  color: var(--adl-text);
-  background: var(--adl-bg-soft);
-  border-color: var(--adl-line);
+.adl-mono {
+  font: 11px/1.45 var(--salt-text-code-fontFamily, ui-monospace, SFMono-Regular, Menlo, monospace);
+  color: var(--salt-content-secondary-foreground, #9aa3b5);
+  word-break: break-word;
 }
-.adl-card {
-  border: 1px solid var(--adl-line);
-  border-radius: 8px;
-  background: var(--adl-bg-soft);
-  padding: 10px;
-  margin-bottom: 8px;
-}
-.adl-card[data-selected='true'] { border-color: var(--adl-accent); }
-.adl-row { display: flex; align-items: center; gap: 8px; }
-.adl-row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .adl-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--adl-line);
+  padding: 1px 8px;
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
   font-size: 11px;
-  color: var(--adl-muted);
+  color: var(--salt-content-secondary-foreground, #9aa3b5);
+  white-space: nowrap;
 }
-.adl-chip[data-status='resolved'] { color: var(--adl-resolved); border-color: currentColor; }
-.adl-chip[data-status='degraded'] { color: var(--adl-degraded); border-color: currentColor; }
-.adl-chip[data-status='orphaned'] { color: var(--adl-orphaned); border-color: currentColor; }
-.adl-mono {
-  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--adl-muted);
-  word-break: break-word;
-}
-.adl-muted { color: var(--adl-muted); }
-.adl-btn {
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--adl-line);
-  background: var(--adl-bg-soft);
-  color: var(--adl-text);
-  font: inherit;
-  cursor: pointer;
-}
-.adl-btn:hover { border-color: var(--adl-accent); }
-.adl-btn[data-variant='primary'] { background: var(--adl-accent); border-color: var(--adl-accent); color: #fff; }
-.adl-btn[data-active='true'] { background: var(--adl-accent); border-color: var(--adl-accent); color: #fff; }
-.adl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.adl-metric { display: flex; flex-direction: column; gap: 2px; }
-.adl-metric-value { font-size: 18px; font-weight: 600; }
-.adl-metric-label { font-size: 11px; color: var(--adl-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.adl-chip[data-status='resolved'] { color: var(--salt-status-success-foreground, #3fb27f); border-color: currentColor; }
+.adl-chip[data-status='degraded'] { color: var(--salt-status-warning-foreground, #e0a33e); border-color: currentColor; }
+.adl-chip[data-status='orphaned'] { color: var(--salt-status-error-foreground, #e4685d); border-color: currentColor; }
 .adl-list { list-style: none; margin: 0; padding: 0; }
-.adl-input {
-  width: 100%;
-  background: var(--adl-bg);
-  color: inherit;
-  border: 1px solid var(--adl-line);
-  border-radius: 6px;
-  padding: 6px 8px;
-  font: inherit;
-}
-.adl-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--adl-bg);
-  border-bottom: 1px solid var(--adl-line);
-}
+.adl-row { display: flex; align-items: center; gap: var(--salt-spacing-100, 8px); flex-wrap: wrap; }
+.adl-row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--salt-spacing-100, 8px); }
 .adl-stale {
-  border-left: 2px solid var(--adl-degraded);
-  padding-left: 8px;
-  margin-top: 6px;
+  border-left: 2px solid var(--salt-status-warning-borderColor, #e0a33e);
+  padding-left: var(--salt-spacing-100, 8px);
+  margin-top: var(--salt-spacing-75, 6px);
 }
+.adl-metric { display: flex; flex-direction: column; }
+.adl-metric-label { font-size: 11px; color: var(--salt-content-secondary-foreground, #9aa3b5); text-transform: uppercase; letter-spacing: 0.04em; }
+.adl-tabs { display: flex; gap: var(--salt-spacing-50, 4px); padding: var(--salt-spacing-100, 8px) var(--salt-spacing-100, 8px) 0; }
 `
 
-/** Injected once per document. No build step, no CSS import contract. */
+/** Injected once per document, next to the CSS Salt injects for its own components. */
+export function injectFeedbackStyles(doc: Document = document): void {
+  if (doc.getElementById(STYLE_ID)) return
+  const style = doc.createElement('style')
+  style.id = STYLE_ID
+  style.textContent = feedbackStyles
+  doc.head.append(style)
+}
+
 export function useFeedbackStyles(): void {
   useEffect(() => {
-    if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return
-    const style = document.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = feedbackStyles
-    document.head.append(style)
+    if (typeof document !== 'undefined') injectFeedbackStyles(document)
   }, [])
 }
