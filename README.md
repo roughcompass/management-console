@@ -21,7 +21,7 @@ re-anchor pass and shown in the toolbar, not reconstructed from logs later.
 | Package | What it owns |
 |---|---|
 | `@adl/anchor-core` | The anchoring SDK: anchors, context locks, the re-anchor chain, crop capture, orphan metering. Framework-agnostic, no dependencies. |
-| `@adl/provenance` | Build-time instrumentation: a babel plugin that marks host elements, and a bundler plugin that publishes each participant's manifest, context lock and build report. |
+| `@de/ui-provenance` | The UI Provenance Instrumenter: registry-backed element identity, build-time instrumentation for Vite and Webpack, the Module Federation 2 runtime integration, and the resolution SDK. |
 | `@adl/feedback-store` | The datastore model — comments, threads, anchors, users, preview versions — behind one repository interface, with in-memory and localStorage implementations. |
 | `@adl/feedback-ui` | The toolbar: `mountFeedbackToolbar()`, element picking, comment pins, and the panel for creating, viewing, resolving and replying to feedback. Built with Salt. |
 
@@ -38,10 +38,14 @@ toolbar is too — its chrome follows whatever Salt theme the Frame is running.
 
 ```bash
 pnpm install
-pnpm build          # the apps consume the built packages
-pnpm test           # 57 unit and integration tests
-pnpm demo           # shell on :5273, remotes on :5274 and :5275
+pnpm build              # the apps consume the built packages
+pnpm test               # unit, integration and stability suites
+pnpm verify:requirements # every spec requirement traced to its evidence
+pnpm demo               # shell on :5273, remotes on :5274 and :5275
 ```
+
+Instrumentation is preview-only and off unless `DE_UI_PROVENANCE_ENABLED=true`;
+`pnpm verify:production` proves a production artifact carries none of it.
 
 In the preview: press **Comment on a node**, click something inside an MFE,
 write a comment. Then press **B · payments-dash 2.5.0 (rebuilt)**. Build B loads
@@ -94,7 +98,7 @@ for matching and exists so an orphaned comment can still show what it was about.
 
 | Level | Survives | Confidence ceiling |
 |---|---|---|
-| Provenance id | cosmetic refactors, file moves (with an instance key) | 1.00 |
+| Provenance id | cosmetic refactors, file moves, component renames | 1.00 |
 | Semantic path | DOM churn, class renames, MFE version bumps | 1.00 |
 | Token reference | component restructuring | 0.80 |
 | Text | layout changes | 0.65 |
@@ -108,16 +112,26 @@ See [docs/anchor-resolution.md](docs/anchor-resolution.md).
 
 ## The provenance contract
 
-Level 1 needs a build-time step in every participating MFE. It is a platform
-contract change, not an application change, and it is additive: an MFE adds the
-babel plugin and nothing else about it changes. Under federation each remote is
-built separately and publishes its own manifest, scoped by MFE name; the shell
-merges them.
+Level 1 of the chain is supplied by the **UI Provenance Instrumenter**
+(`ui-provenance/`), which is specified and tested in its own right.
+
+Its central claim is that identity must survive ordinary work. A line number
+cannot: it moves when the file is reformatted. So each JSX element is assigned
+an opaque id once, recorded in a source-controlled registry, and preserved by
+matching structure rather than position. Measured on a 151-element golden
+fixture across a twelve-edit suite: 100% retention for formatting-only edits,
+100% across the ordinary-edit suite including file moves and component renames,
+and zero false reattachments.
+
+Under federation each remote is built separately and publishes its own manifest;
+the host registers them through the Module Federation 2 runtime plugin and the
+toolbar reads them from there.
 
 An MFE that has not adopted it still receives feedback — the chain starts at the
 semantic level and confidence is lower.
 
-See [docs/provenance-contract.md](docs/provenance-contract.md).
+See [ui-provenance/README.md](ui-provenance/README.md) and its
+[architecture notes](ui-provenance/docs/architecture.md).
 
 ## Deliberately not built
 
