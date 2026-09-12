@@ -122,3 +122,59 @@ export async function loadProvenanceManifests(
 export function provAttr(element: Element): string | null {
   return element.getAttribute(ATTR.prov)
 }
+
+// --------------------------------------------------------------------------
+// Adapter for @de/ui-provenance manifests
+// --------------------------------------------------------------------------
+
+interface UiProvenanceSource {
+  sourceId: string
+  file: string
+  line?: number
+  column?: number
+  enclosingComponent: string
+  elementType: string
+  library?: { name: string; version: string; component: string }
+}
+
+export interface UiProvenanceManifest {
+  schemaVersion: string
+  applicationId: string
+  repository: string
+  commitSha: string
+  buildId: string
+  sources: Record<string, UiProvenanceSource>
+}
+
+/**
+ * Turns an instrumenter manifest into the shape the anchor index reads.
+ *
+ * The instrumenter owns identity: its source ids come from a source-controlled
+ * registry and survive ordinary edits, which is what the provenance level of
+ * the chain always wanted and could not produce from a line number.
+ */
+export function adaptUiProvenanceManifest(manifest: UiProvenanceManifest): ProvenanceManifest {
+  const scope = manifest.applicationId
+  const adapted: ProvenanceManifest = {
+    version: 1,
+    scopes: {
+      [scope]: { repo: manifest.repository, commit: manifest.commitSha, buildId: manifest.buildId },
+    },
+    modules: {},
+    nodes: {},
+  }
+
+  for (const entry of Object.values(manifest.sources)) {
+    const moduleId = `${scope}:${entry.file}`
+    adapted.modules[moduleId] = { file: entry.file, scope }
+    adapted.nodes[entry.sourceId] = {
+      module: moduleId,
+      component: entry.enclosingComponent,
+      element: entry.elementType,
+      line: entry.line ?? 0,
+      column: entry.column ?? 0,
+    }
+  }
+
+  return adapted
+}

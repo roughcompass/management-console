@@ -6,12 +6,12 @@ import {
   parseSemanticPath,
 } from './semantic-path.js'
 import type { ProvenanceManifest } from './types.js'
-import { htmlV1, manifestV1, mount } from './__fixtures__/dom.js'
+import { ID, htmlV1, manifestV1, mount } from './__fixtures__/dom.js'
 
 describe('semantic path', () => {
   it('reads the host contract and the build manifest into one path', () => {
     const root = mount(htmlV1())
-    const badge = root.querySelector('[data-prov="m1:9:5"]')!
+    const badge = root.querySelector(`[data-de-provenance-id="${ID.badge}"]`)!
     const path = buildSemanticPath(badge, manifestV1, root)
     expect(formatSemanticPath(path, { includeElement: false })).toBe(
       'Frame[cib-frame]@3.1 > Zone[main] > MFE[payments-dash]@2.4.1 > PositionsTable > StatusBadge',
@@ -21,7 +21,7 @@ describe('semantic path', () => {
 
   it('collapses consecutive repeats of the same component', () => {
     const root = mount(htmlV1())
-    const cell = root.querySelector('[data-prov="m1:22:13"]')!
+    const cell = root.querySelector(`[data-de-provenance-id="${ID.cell}"]`)!
     const path = buildSemanticPath(cell, manifestV1, root)
     const components = path.segments.filter((s) => s.kind === 'component').map((s) => s.name)
     expect(components).toEqual(['PositionsTable'])
@@ -35,22 +35,22 @@ describe('semantic path', () => {
       scopes: { shell: { repo: 'roughcompass/management-console', commit: 'a41c9ef', buildId: 'build-a' } },
       modules: { m9: { file: 'src/App.tsx', scope: 'shell' } },
       nodes: {
-        'm9:1:1': { module: 'm9', component: 'App', element: 'div', line: 1, column: 1 },
-        'm9:2:2': { module: 'm9', component: 'Frame', element: 'main', line: 2, column: 2 },
-        'm9:3:3': { module: 'm9', component: 'PositionsTable', element: 'span', line: 3, column: 3 },
+        prv_APP: { module: 'm9', component: 'App', element: 'div', line: 1, column: 1 },
+        prv_FRAME: { module: 'm9', component: 'Frame', element: 'main', line: 2, column: 2 },
+        prv_TABLE: { module: 'm9', component: 'PositionsTable', element: 'span', line: 3, column: 3 },
       },
     }
     const root = mount(`
-      <div data-prov="m9:1:1">
+      <div data-de-provenance-id="prv_APP">
         <div data-frame="cib-frame" data-frame-version="3.1">
-          <main data-zone="main" data-prov="m9:2:2">
+          <main data-zone="main" data-de-provenance-id="prv_FRAME">
             <section data-mfe="payments-dash" data-mfe-version="2.4.1">
-              <span data-prov="m9:3:3">settled</span>
+              <span data-de-provenance-id="prv_TABLE">settled</span>
             </section>
           </main>
         </div>
       </div>`)
-    const path = buildSemanticPath(root.querySelector('[data-prov="m9:3:3"]')!, manifest, root)
+    const path = buildSemanticPath(root.querySelector('[data-de-provenance-id="prv_TABLE"]')!, manifest, root)
     expect(formatSemanticPath(path, { includeElement: false })).toBe(
       'Frame[cib-frame]@3.1 > Zone[main] > MFE[payments-dash]@2.4.1 > PositionsTable',
     )

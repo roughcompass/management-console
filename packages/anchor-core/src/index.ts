@@ -10,12 +10,13 @@ export {
   lookupFile,
   lookupNode,
   lookupScope,
+  adaptUiProvenanceManifest,
   mergeProvenanceManifests,
   parseProvToken,
   provAttr,
   setProvenanceManifest,
 } from './manifest.js'
-export type { ProvToken } from './manifest.js'
+export type { ProvToken, UiProvenanceManifest } from './manifest.js'
 export {
   buildSemanticPath,
   formatSemanticPath,

@@ -3,7 +3,7 @@ import { captureAnchor } from './capture.js'
 import { createResolutionContext } from './index-dom.js'
 import { FeedbackStore } from './store.js'
 import type { Actor } from './types.js'
-import { htmlV1, htmlV2, lockV1, lockV2, manifestV1, manifestV2, mount } from './__fixtures__/dom.js'
+import { ID, htmlV1, htmlV2, lockV1, lockV2, manifestV1, manifestV2, mount } from './__fixtures__/dom.js'
 
 const designer: Actor = { id: 'u-dw', name: 'Dana Whitfield', role: 'design' }
 const engineer: Actor = { id: 'u-mo', name: 'Miles Okonjo', role: 'engineering' }
@@ -28,11 +28,11 @@ describe('feedback store', () => {
 
   it('gives every thread a named owner at creation', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at('[data-prov="m1:9:5"]'), author: designer, body: 'wrong blue' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'wrong blue' })
     expect(thread.owner).toEqual(designer)
 
     const assigned = store.createThread({
-      anchor: at('[data-prov="m1:40:7"]'),
+      anchor: at(`[data-de-provenance-id="${ID.button}"]`),
       author: designer,
       body: 'should use the entitlement-gated hook',
       owner: engineer,
@@ -42,9 +42,9 @@ describe('feedback store', () => {
 
   it('re-anchors the open set against a rebuild and reports the orphan rate', () => {
     const { store, at } = seed()
-    store.createThread({ anchor: at('[data-prov="m1:9:5"]'), author: designer, body: 'badge is the wrong blue' })
-    store.createThread({ anchor: at('[data-prov="m1:40:7"]'), author: engineer, body: 'primary action, not secondary' })
-    store.createThread({ anchor: at('[data-prov="m1:31:7"]'), author: designer, body: 'this heading is too quiet' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'badge is the wrong blue' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.button}"]`), author: engineer, body: 'primary action, not secondary' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'this heading is too quiet' })
 
     const snapshot = store.reanchor(rebuild(), { buildId: 'build-b' })
 
@@ -54,15 +54,17 @@ describe('feedback store', () => {
     expect(snapshot.byLevel.provenance).toBe(2)
     expect(snapshot.byLevel.none).toBe(1)
 
+    // The instrumenter's registry carried both surviving ids through the
+    // refactor, so they resolve exactly; only the deleted card orphans.
     const [badge, button, heading] = store.threads()
-    expect(badge!.anchorStatus).toBe('degraded')
-    expect(button!.anchorStatus).toBe('degraded')
+    expect(badge!.anchorStatus).toBe('resolved')
+    expect(button!.anchorStatus).toBe('resolved')
     expect(heading!.anchorStatus).toBe('orphaned')
   })
 
   it('flags staleness as the diff between the two locks, never silently', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at('[data-prov="m1:9:5"]'), author: designer, body: 'denser rows' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'denser rows' })
     expect(thread.stale).toBe(false)
 
     store.reanchor(rebuild(), { buildId: 'build-b' })
@@ -76,7 +78,7 @@ describe('feedback store', () => {
 
   it('leaves resolved threads out of the re-anchor pass', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at('[data-prov="m1:31:7"]'), author: designer, body: 'done with this' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'done with this' })
     store.setStatus(thread.id, 'resolved')
 
     const snapshot = store.reanchor(rebuild(), { buildId: 'build-b' })
@@ -86,7 +88,7 @@ describe('feedback store', () => {
 
   it('keeps per-build history so orphan rate can be compared across rebuilds', () => {
     const { store, ctx, at } = seed()
-    store.createThread({ anchor: at('[data-prov="m1:9:5"]'), author: designer, body: 'wrong blue' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'wrong blue' })
 
     store.reanchor(ctx, { buildId: 'build-a' })
     store.reanchor(rebuild(), { buildId: 'build-b' })
@@ -102,7 +104,7 @@ describe('feedback store', () => {
     const events: string[] = []
     store.subscribe((event) => events.push(event.type))
 
-    const thread = store.createThread({ anchor: at('[data-prov="m1:9:5"]'), author: designer, body: 'wrong blue' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'wrong blue' })
     store.addComment(thread.id, engineer, 'that is an L2 token change')
     store.reanchor(rebuild(), { buildId: 'build-b' })
 

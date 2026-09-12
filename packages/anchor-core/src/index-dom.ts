@@ -1,4 +1,4 @@
-import { lookupFile, lookupNode, lookupScope, parseProvToken, provAttr } from './manifest.js'
+import { lookupFile, lookupNode, lookupScope, provAttr } from './manifest.js'
 import { buildSemanticPath } from './semantic-path.js'
 import type {
   ContextLock,
@@ -99,11 +99,11 @@ export function readProvenance(
   ordinal: number,
 ): ProvenanceRef | undefined {
   const raw = provAttr(element)
-  const parsed = parseProvToken(raw)
-  if (!raw || !parsed) return undefined
+  if (!raw) return undefined
   const node = lookupNode(manifest, raw)
-  const file = lookupFile(manifest, parsed.module)
-  const scope = lookupScope(manifest, parsed.module)
+  // The source id is the key; the module it belongs to comes from the entry.
+  const file = node ? lookupFile(manifest, node.module) : undefined
+  const scope = node ? lookupScope(manifest, node.module) : undefined
   if (!node || !file || !scope || !manifest) return undefined
   return {
     token: raw,

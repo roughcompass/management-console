@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { useRef } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  ID,
   htmlV1,
   htmlV2,
   lockV1,
@@ -103,7 +104,7 @@ describe('anchored feedback across a rebuild', () => {
         lock={lockV1}
         manifest={manifestV1}
         buildId="build-a"
-        selector='[data-prov="m1:9:5"]'
+        selector={`[data-de-provenance-id="${ID.badge}"]`}
         body="this badge is the wrong blue"
       />,
     )
@@ -116,9 +117,9 @@ describe('anchored feedback across a rebuild', () => {
     restore()
   })
 
-  it('keeps the comment attached after a rebuild, and marks how it held', async () => {
+  it('keeps the comment attached after a rebuild, and still flags the moved lock', async () => {
     const props = {
-      selector: '[data-prov="m1:9:5"]',
+      selector: `[data-de-provenance-id="${ID.badge}"]`,
       body: 'this badge is the wrong blue',
     }
     const view = render(
@@ -130,7 +131,10 @@ describe('anchored feedback across a rebuild', () => {
       <Harness html={htmlV2()} lock={lockV2} manifest={manifestV2} buildId="build-b" {...props} />,
     )
 
-    await waitFor(() => expect(chip('degraded')).not.toBeNull())
+    // The instrumenter's registry carried the source id into the new build, so
+    // the anchor is exact. Staleness is a separate question from anchoring:
+    // the pinned inputs still moved, and the thread still says so.
+    await waitFor(() => expect(chip('resolved')).not.toBeNull())
     expect(screen.getByText('this badge is the wrong blue')).toBeDefined()
     expect(screen.getByText(/written against an older context lock/)).toBeDefined()
     expect(screen.getByText(/mfes.payments-dash: 2.4.1/)).toBeDefined()
@@ -138,7 +142,7 @@ describe('anchored feedback across a rebuild', () => {
 
   it('reports the orphan rate and says what the chain tried', async () => {
     const props = {
-      selector: '[data-prov="m1:31:7"]',
+      selector: `[data-de-provenance-id="${ID.heading}"]`,
       body: 'this heading is too quiet',
     }
     const view = render(

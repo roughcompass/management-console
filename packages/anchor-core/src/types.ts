@@ -34,10 +34,10 @@ export type AnchorType =
 
 /** DOM attributes that make up the provenance instrumentation contract. */
 export const ATTR = {
-  /** Emitted by the build-time plugin: "<moduleId>:<line>:<column>". */
-  prov: 'data-prov',
+  /** The registry source id, emitted by @de/ui-provenance. */
+  prov: 'data-de-provenance-id',
   /** Authored opt-in: a stable identity for one instance in a list. */
-  provKey: 'data-prov-key',
+  provKey: 'data-de-instance-key',
   /** Semicolon-separated design token ids that produce this node's styling. */
   tokens: 'data-tokens',
   /** Set by the host Frame. */
@@ -55,7 +55,7 @@ export const ATTR = {
 // --------------------------------------------------------------------------
 
 export interface ProvenanceRef {
-  /** Raw attribute value, e.g. "a1b2c3d4:42:8". */
+  /** The registry source id. Immutable, and stable across ordinary edits. */
   token: string
   /** Which federated participant built this node. */
   scope: string

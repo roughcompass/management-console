@@ -4,6 +4,19 @@ import type { ContextLock, ProvenanceManifest } from '../types.js'
 const V1_FILE = 'src/mfes/payments/v1/PaymentsDash.tsx'
 const V2_FILE = 'src/mfes/payments/v2/PaymentsDash.tsx'
 
+/**
+ * Source ids come from the instrumenter's committed registry, so the same
+ * element keeps its id when it moves to a new file in build B. Only the
+ * summary heading, which build B deletes, is absent there.
+ */
+export const ID = {
+  badge: 'prv_01M29J9WHH63Q297TKCABQZWTX',
+  row: 'prv_01M29J9WHHGRG1NBGGXR9SPY7R',
+  cell: 'prv_01M29J9WHHYSHQ7HHYD1FYX05Y',
+  heading: 'prv_01M29J9WHHXT6CPJ28MKWYY3FA',
+  button: 'prv_01M29J9WHHPD8GQ5YMCBN18KF5',
+} as const
+
 export const manifestV1: ProvenanceManifest = {
   version: 1,
   scopes: {
@@ -15,11 +28,11 @@ export const manifestV1: ProvenanceManifest = {
   },
   modules: { m1: { file: V1_FILE, scope: 'payments-dash' } },
   nodes: {
-    'm1:9:5': { module: 'm1', component: 'StatusBadge', element: 'span', line: 9, column: 5 },
-    'm1:21:11': { module: 'm1', component: 'PositionsTable', element: 'tr', line: 21, column: 11 },
-    'm1:22:13': { module: 'm1', component: 'PositionsTable', element: 'td', line: 22, column: 13 },
-    'm1:31:7': { module: 'm1', component: 'SummaryCard', element: 'h3', line: 31, column: 7 },
-    'm1:40:7': { module: 'm1', component: 'PaymentsDash', element: 'button', line: 40, column: 7 },
+    [ID.badge]: { module: 'm1', component: 'StatusBadge', element: 'span', line: 9, column: 5 },
+    [ID.row]: { module: 'm1', component: 'PositionsTable', element: 'tr', line: 21, column: 11 },
+    [ID.cell]: { module: 'm1', component: 'PositionsTable', element: 'td', line: 22, column: 13 },
+    [ID.heading]: { module: 'm1', component: 'SummaryCard', element: 'h3', line: 31, column: 7 },
+    [ID.button]: { module: 'm1', component: 'PaymentsDash', element: 'button', line: 40, column: 7 },
   },
 }
 
@@ -34,10 +47,10 @@ export const manifestV2: ProvenanceManifest = {
   },
   modules: { m2: { file: V2_FILE, scope: 'payments-dash' } },
   nodes: {
-    'm2:14:5': { module: 'm2', component: 'StatusBadge', element: 'span', line: 14, column: 5 },
-    'm2:29:13': { module: 'm2', component: 'PositionsTable', element: 'tr', line: 29, column: 13 },
-    'm2:30:15': { module: 'm2', component: 'PositionsTable', element: 'td', line: 30, column: 15 },
-    'm2:52:7': { module: 'm2', component: 'PaymentsDash', element: 'button', line: 52, column: 7 },
+    [ID.badge]: { module: 'm2', component: 'StatusBadge', element: 'span', line: 14, column: 5 },
+    [ID.row]: { module: 'm2', component: 'PositionsTable', element: 'tr', line: 29, column: 13 },
+    [ID.cell]: { module: 'm2', component: 'PositionsTable', element: 'td', line: 30, column: 15 },
+    [ID.button]: { module: 'm2', component: 'PaymentsDash', element: 'button', line: 52, column: 7 },
   },
 }
 
@@ -76,10 +89,10 @@ const badgeTokens = (status: string) =>
 export function htmlV1(): string {
   const rows = ROWS.map(
     (row) => `
-      <tr data-prov="m1:21:11" data-prov-key="${row.id}">
-        <td data-prov="m1:22:13">${row.account}</td>
-        <td data-prov="m1:22:13">
-          <span data-prov="m1:9:5" data-prov-key="${row.id}" data-tokens="${badgeTokens(row.status)}">${row.status}</span>
+      <tr data-de-provenance-id="${ID.row}" data-de-instance-key="${row.id}">
+        <td data-de-provenance-id="${ID.cell}">${row.account}</td>
+        <td data-de-provenance-id="${ID.cell}">
+          <span data-de-provenance-id="${ID.badge}" data-de-instance-key="${row.id}" data-tokens="${badgeTokens(row.status)}">${row.status}</span>
         </td>
       </tr>`,
   ).join('')
@@ -88,9 +101,9 @@ export function htmlV1(): string {
     <div data-frame="cib-frame" data-frame-version="3.1">
       <main data-zone="main">
         <section data-mfe="payments-dash" data-mfe-version="2.4.1">
-          <button data-prov="m1:40:7" data-tokens="color.action.primary.background=background-color">New instruction</button>
+          <button data-de-provenance-id="${ID.button}" data-tokens="color.action.primary.background=background-color">New instruction</button>
           <section class="card">
-            <h3 data-prov="m1:31:7" data-tokens="type.display.sm=font-size">Unsettled exposure</h3>
+            <h3 data-de-provenance-id="${ID.heading}" data-tokens="type.display.sm=font-size">Unsettled exposure</h3>
           </section>
           <table><tbody>${rows}</tbody></table>
         </section>
@@ -105,10 +118,10 @@ export function htmlV1(): string {
 export function htmlV2(): string {
   const rows = ROWS.map(
     (row) => `
-      <tr data-prov="m2:29:13" data-prov-key="${row.id}">
-        <td data-prov="m2:30:15"><span class="stack">${row.account}</span></td>
-        <td data-prov="m2:30:15">
-          <span data-prov="m2:14:5" data-prov-key="${row.id}" data-tokens="${badgeTokens(row.status)}"><i></i>${row.status}</span>
+      <tr data-de-provenance-id="${ID.row}" data-de-instance-key="${row.id}">
+        <td data-de-provenance-id="${ID.cell}"><span class="stack">${row.account}</span></td>
+        <td data-de-provenance-id="${ID.cell}">
+          <span data-de-provenance-id="${ID.badge}" data-de-instance-key="${row.id}" data-tokens="${badgeTokens(row.status)}"><i></i>${row.status}</span>
         </td>
       </tr>`,
   ).join('')
@@ -117,7 +130,7 @@ export function htmlV2(): string {
     <div data-frame="cib-frame" data-frame-version="3.1">
       <main data-zone="main">
         <section data-mfe="payments-dash" data-mfe-version="2.5.0">
-          <button data-prov="m2:52:7" data-tokens="color.action.primary.background=background-color">New instruction</button>
+          <button data-de-provenance-id="${ID.button}" data-tokens="color.action.primary.background=background-color">New instruction</button>
           <div class="table-wrap"><table><tbody>${rows}</tbody></table></div>
         </section>
       </main>

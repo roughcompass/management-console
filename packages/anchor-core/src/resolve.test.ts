@@ -3,7 +3,7 @@ import { captureAnchor, captureNonVisualAnchor } from './capture.js'
 import { createResolutionContext } from './index-dom.js'
 import { resolveAnchor } from './resolve.js'
 import type { AnchorDescriptor, Rect } from './types.js'
-import { htmlV1, htmlV2, lockV1, lockV2, manifestV1, manifestV2, mount } from './__fixtures__/dom.js'
+import { ID, htmlV1, htmlV2, lockV1, lockV2, manifestV1, manifestV2, mount } from './__fixtures__/dom.js'
 
 function contextV1() {
   const root = mount(htmlV1())
@@ -35,7 +35,7 @@ describe('anchor capture', () => {
   })
 
   it('captures every level of the chain at once', () => {
-    const anchor = anchorFor('[data-prov="m1:9:5"]')
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.badge}"]`)
     expect(anchor.capturedLevel).toBe('provenance')
     expect(anchor.provenance).toMatchObject({
       component: 'StatusBadge',
@@ -63,7 +63,7 @@ describe('anchor capture', () => {
   it('falls back to the best level available when the MFE is not instrumented', () => {
     const root = mount(htmlV1())
     const ctx = createResolutionContext({ root, lock: lockV1 })
-    const anchor = captureAnchor(root.querySelector('[data-prov="m1:9:5"]')!, ctx)
+    const anchor = captureAnchor(root.querySelector(`[data-de-provenance-id="${ID.badge}"]`)!, ctx)
     expect(anchor.provenance).toBeUndefined()
     expect(anchor.capturedLevel).toBe('semantic')
   })
@@ -75,37 +75,41 @@ describe('resolution chain', () => {
   })
 
   it('re-anchors exactly on the build it was written against', () => {
-    const anchor = anchorFor('[data-prov="m1:9:5"]')
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.badge}"]`)
     const { root, ctx } = contextV1()
     const resolution = resolveAnchor(anchor, ctx)
     expect(resolution.status).toBe('resolved')
     expect(resolution.level).toBe('provenance')
     expect(resolution.confidence).toBe(1)
-    expect(resolution.element).toBe(root.querySelector('[data-prov="m1:9:5"]'))
+    expect(resolution.element).toBe(root.querySelector(`[data-de-provenance-id="${ID.badge}"]`))
   })
 
-  it('survives a move to a new file via the authored instance key, at a cost', () => {
-    const anchor = anchorFor('[data-prov="m1:9:5"]')
+  it('survives a move to a new file, because the id moved with it', () => {
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.badge}"]`)
+    const { root, ctx } = contextV2({ manifest: manifestV2 })
+    const resolution = resolveAnchor(anchor, ctx)
+
+    // The registry preserved the source id through the refactor, so this is an
+    // exact match rather than a degraded one: a line number could not do this.
+    expect(resolution.level).toBe('provenance')
+    expect(resolution.status).toBe('resolved')
+    expect(resolution.confidence).toBe(1)
+    expect(resolution.element).toBe(
+      root.querySelector(`[data-de-instance-key="p-4411"][data-de-provenance-id="${ID.badge}"]`),
+    )
+  })
+
+  it('holds a keyless node across the rebuild', () => {
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.button}"]`)
     const { root, ctx } = contextV2({ manifest: manifestV2 })
     const resolution = resolveAnchor(anchor, ctx)
     expect(resolution.level).toBe('provenance')
-    // Same level, lower confidence: the anchor held, but it is no longer exact.
-    expect(resolution.status).toBe('degraded')
-    expect(resolution.confidence).toBe(0.8)
-    expect(resolution.element).toBe(root.querySelector('[data-prov-key="p-4411"][data-prov="m2:14:5"]'))
-  })
-
-  it('holds a keyless node when its component is still the only one of its kind', () => {
-    const anchor = anchorFor('[data-prov="m1:40:7"]')
-    const { root, ctx } = contextV2({ manifest: manifestV2 })
-    const resolution = resolveAnchor(anchor, ctx)
-    expect(resolution.level).toBe('provenance')
-    expect(resolution.confidence).toBe(0.75)
+    expect(resolution.confidence).toBe(1)
     expect(resolution.element).toBe(root.querySelector('button'))
   })
 
   it('falls to the token level when the new build carries no provenance at all', () => {
-    const anchor = anchorFor('[data-prov="m1:9:5"]')
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.badge}"]`)
     const { ctx } = contextV2()
     const resolution = resolveAnchor(anchor, ctx)
     expect(resolution.level).toBe('token')
@@ -114,7 +118,7 @@ describe('resolution chain', () => {
   })
 
   it('falls to the text level when the token binding is gone too', () => {
-    const anchor = anchorFor('[data-prov="m1:9:5"]')
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.badge}"]`)
     const { ctx } = contextV2({ html: htmlV2().replace(/ data-tokens="[^"]*"/g, '') })
     const resolution = resolveAnchor(anchor, ctx)
     expect(resolution.level).toBe('text')
@@ -122,7 +126,7 @@ describe('resolution chain', () => {
   })
 
   it('orphans a node that the rebuild removed, and says what it tried', () => {
-    const anchor = anchorFor('[data-prov="m1:31:7"]')
+    const anchor = anchorFor(`[data-de-provenance-id="${ID.heading}"]`)
     const { ctx } = contextV2({ manifest: manifestV2 })
     const resolution = resolveAnchor(anchor, ctx)
     expect(resolution.status).toBe('orphaned')
@@ -145,7 +149,7 @@ describe('resolution chain', () => {
     const html = (card: string) => `
       <div data-frame="cib-frame">
         <main data-zone="main">
-          <section data-mfe="payments-dash" data-mfe-version="2.4.1" data-prov="m1:40:7">
+          <section data-mfe="payments-dash" data-mfe-version="2.4.1" data-de-provenance-id="${ID.button}">
             ${card}
             <div class="head">Payments</div>
           </section>
@@ -176,7 +180,7 @@ describe('resolution chain', () => {
       <div data-frame="cib-frame">
         <main data-zone="main">
           <section data-mfe="payments-dash" data-mfe-version="2.4.1">
-            <span data-prov="m1:40:7"></span>
+            <span data-de-provenance-id="${ID.button}"></span>
             <div class="saltCard" data-tokens="color.surface.raised=background-color">${extra}</div>
           </section>
         </main>
