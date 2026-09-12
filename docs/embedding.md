@@ -36,6 +36,37 @@ so the Frame's own chrome is not commentable.
 `toolbar.update({ lock, buildId, manifest, ... })` swaps the pinned inputs and
 re-anchors the open set. `toolbar.destroy()` removes it.
 
+## Two people read it
+
+The person leaving comments is usually not an engineer: a designer, a product
+owner, someone from operations. The person acting on them usually is. The
+toolbar is written for the first and reveals the second on request, following
+the pattern design tools settled on for the same split (a design surface with a
+"dev mode" behind one switch) and the usual rule for progressive disclosure:
+show what the current task needs, put the rest one deliberate step away, in the
+same place every time.
+
+By default the toolbar names things the way the page does. A comment is on
+**Status badge "Failed" in Payments**, not on
+`MFE[payments-dash] > PositionsTable > StatusBadge`; the label is captured with
+the anchor from the component name, the node's visible text and the heading of
+the section it sits in. Only trouble gets a status — **Best match** when the
+thing moved and the toolbar found the closest match, **Not in this build** when
+it could not — and a comment that is where it was left shows none. The panel
+has two views, **Comments** and **Send**, and the numbers in its header are the
+ones a reviewer acts on: open, and to send.
+
+**Technical details**, in the panel header, turns on the engineering layer
+everywhere at once and is remembered per reviewer: semantic paths, source file
+and line, instance keys, anchor status and level with confidence, the context
+lock and its diff, the orphan rate, re-anchoring, and the Network, Runtime and
+Build views. Each comment also has a **Details** disclosure of its own, so an
+engineer can look at one without changing the panel for everyone.
+
+The packet that leaves carries both: each thread has a plain `label` and the
+technical `where`, `provenance` and anchor fields, and the digest prints the
+label first.
+
 ## What leaves it
 
 Comments accumulate until a reviewer decides what the next build should act on.

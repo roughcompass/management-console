@@ -53,6 +53,12 @@ export interface FeedbackContextValue {
   setPicking(value: boolean): void
   panelOpen: boolean
   setPanelOpen(value: boolean): void
+  /**
+   * The engineering layer: paths, source refs, anchor levels, the lock, the
+   * Network/Runtime/Build views. Off by default; remembered per reviewer.
+   */
+  details: boolean
+  setDetails(value: boolean): void
   selectedThreadId: string | null
   selectThread(id: string | null): void
   elementFor(threadId: string): Element | null
@@ -109,6 +115,16 @@ function submissionId(): string {
   return `sub_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 }
 
+const DETAILS_KEY = 'adl:details'
+
+function readDetails(): boolean {
+  try {
+    return localStorage.getItem(DETAILS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
   const { actor, lock, manifest, buildReport, previewRef, previewId, repository, onSubmit } = props
 
@@ -126,6 +142,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
   const [version, setVersion] = useState(0)
   const [picking, setPicking] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [details, setDetailsState] = useState(readDetails)
   const [selectedThreadId, selectThread] = useState<string | null>(null)
   const [excludedThreadIds, setExcluded] = useState<ReadonlySet<string>>(() => new Set())
   const [lastSubmission, setLastSubmission] = useState<FeedbackSubmission | null>(null)
@@ -295,6 +312,15 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [store],
   )
 
+  const setDetails = useCallback((value: boolean) => {
+    setDetailsState(value)
+    try {
+      localStorage.setItem(DETAILS_KEY, value ? '1' : '0')
+    } catch {
+      // A preview without storage still gets the switch, just not remembered.
+    }
+  }, [])
+
   const setIncluded = useCallback((threadId: string, included: boolean) => {
     setExcluded((prev) => {
       if (included === !prev.has(threadId)) return prev
@@ -355,6 +381,8 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       setPicking,
       panelOpen,
       setPanelOpen,
+      details,
+      setDetails,
       selectedThreadId,
       selectThread,
       elementFor: (threadId: string) => elementsRef.current.get(threadId) ?? null,
@@ -379,6 +407,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       commentGeneral,
       commentOnElement,
       commentOnTarget,
+      details,
       excludedThreadIds,
       includedThreads,
       lastSubmission,
@@ -394,6 +423,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       refresh,
       reply,
       selectedThreadId,
+      setDetails,
       setIncluded,
       setThreadStatus,
       store,

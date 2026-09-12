@@ -33,7 +33,7 @@ export {
   rectOf,
 } from './index-dom.js'
 export type { IndexedNode, ResolutionContext, ResolutionContextOptions } from './index-dom.js'
-export { captureAnchor, captureNonVisualAnchor } from './capture.js'
+export { captureAnchor, captureNonVisualAnchor, visibleText } from './capture.js'
 export { captureElementImage } from './screenshot.js'
 export type { ScreenshotOptions } from './screenshot.js'
 export type { CaptureOptions } from './capture.js'

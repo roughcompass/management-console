@@ -10,13 +10,18 @@ const THREAD = '.adl-thread'
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   // Threads persist across reloads, so each test starts from a clean preview.
-  await page.evaluate(() => localStorage.clear())
+  // These tests read the engineering layer (paths, levels, the lock diff),
+  // which a reviewer turns on once and the toolbar remembers.
+  await page.evaluate(() => {
+    localStorage.clear()
+    localStorage.setItem('adl:details', '1')
+  })
   await page.reload()
   await page.waitForSelector('[data-mfe="payments-dash"] tbody tr')
 })
 
 async function comment(page: Page, selector: string, body: string) {
-  await page.getByRole('button', { name: 'Comment on a node' }).click()
+  await page.getByRole('button', { name: 'Comment on something' }).click()
   await page.locator(selector).first().click({ force: true })
   await page.locator('.adl-composer textarea').fill(body)
   await page.locator('.adl-composer').getByRole('button', { name: 'Comment' }).click()
@@ -82,7 +87,7 @@ test('orphans a comment on a node the rebuild removed, with the crop to show wha
 
   const thread = page.locator(THREAD).first()
   await expect(thread.locator('.adl-chip[data-status="orphaned"]')).toBeVisible()
-  await expect(page.getByText('1 lost their anchor in this build')).toBeVisible()
+  await expect(page.getByText("1 comment can't find what it was about in this build")).toBeVisible()
   await expect(page.locator('.adl-metric', { hasText: 'ORPHAN RATE' })).toContainText('100%')
   await expect(page.locator('.adl-pin')).toHaveCount(0)
   // An orphan the reviewer cannot recognise is an orphan nobody triages.
@@ -91,7 +96,7 @@ test('orphans a comment on a node the rebuild removed, with the crop to show wha
 })
 
 test('captures feedback on things that are not on screen', async ({ page }) => {
-  await page.getByRole('button', { name: /Show feedback/ }).click()
+  await page.getByRole('button', { name: /^Comments \(/ }).click()
   await page.getByRole('tab', { name: 'Network' }).click()
   const request = page
     .locator('.adl-panel-body .adl-card', { hasText: '/api/accounts/:id/positions' })
@@ -133,7 +138,7 @@ test('keeps threads across a reload of the preview', async ({ page }) => {
   await page.reload()
   await page.waitForSelector('[data-mfe="payments-dash"] tbody tr')
 
-  await page.getByRole('button', { name: /Show feedback/ }).click()
+  await page.getByRole('button', { name: /^Comments \(/ }).click()
   const thread = page.locator(THREAD).first()
   await expect(thread.getByText('a failed settlement is an error, not a caution')).toBeVisible()
   await expect(thread.locator('.adl-chip[data-status="resolved"]')).toBeVisible()

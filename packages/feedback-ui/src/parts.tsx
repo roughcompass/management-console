@@ -79,11 +79,6 @@ export function AnchorSummary({
       {anchor.tokens?.length ? (
         <div className="adl-mono">tokens: {anchor.tokens.map((t) => t.token).join(', ')}</div>
       ) : null}
-      {/* The crop is triage evidence: when an anchor is in trouble, it is the
-          only way to show what the comment was actually about. */}
-      {degraded && anchor.visual?.crop ? (
-        <img className="adl-crop" src={anchor.visual.crop} alt="what this comment was left on" />
-      ) : null}
       {degraded ? (
         <details>
           <summary className="adl-mono">

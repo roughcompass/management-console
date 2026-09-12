@@ -163,9 +163,23 @@ export type NonVisualTarget =
       topic: string
     }
 
+/**
+ * How a person points at the node in the words of the page: "the Failed status
+ * in Payments". Captured for the reviewer who does not read paths.
+ */
+export interface AnchorDisplay {
+  /** Component display name at capture time, e.g. StatusBadge. */
+  component?: string
+  /** The node's visible text, when it is short enough to be a name. */
+  text?: string
+  /** Heading of the section the node sits in, e.g. "Payments". */
+  region?: string
+}
+
 export interface AnchorDescriptor {
   anchorType: AnchorType
   capturedAt: string
+  display?: AnchorDisplay
   /** Highest level available when the comment was written. */
   capturedLevel: AnchorLevel
   /** Context lock the preview was pinned to at capture time. */

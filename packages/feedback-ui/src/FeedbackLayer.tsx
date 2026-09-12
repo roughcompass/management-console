@@ -1,8 +1,9 @@
-import { OVERLAY_ATTR, buildSemanticPath, formatSemanticPath } from '@adl/anchor-core'
+import { OVERLAY_ATTR, buildSemanticPath, formatSemanticPath, visibleText } from '@adl/anchor-core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useFeedback } from './context.js'
+import { humanize } from './plain.js'
 import { useFeedbackStyles } from './styles.js'
 
 interface Draft {
@@ -34,6 +35,7 @@ export function FeedbackLayer(): ReactNode {
     previewRef,
     overlayContainer,
     manifest,
+    details,
   } = useFeedback()
 
   const [hovered, setHovered] = useState<Element | null>(null)
@@ -102,13 +104,27 @@ export function FeedbackLayer(): ReactNode {
 
   if (!overlayContainer) return null
 
+  const semanticOf = (element: Element) =>
+    buildSemanticPath(element, manifest, previewRef.current ?? undefined)
   const pathOf = (element: Element) =>
-    formatSemanticPath(buildSemanticPath(element, manifest, previewRef.current ?? undefined), {
-      includeElement: false,
-    })
+    formatSemanticPath(semanticOf(element), { includeElement: false })
+  // Before a comment exists there is no captured display, so name the thing
+  // the same way capture will: the component as a phrase, plus its text.
+  const plainOf = (element: Element) => {
+    const component = [...semanticOf(element).segments]
+      .reverse()
+      .find((segment) => segment.kind === 'component')?.name
+    const name = component ? humanize(component) : element.tagName.toLowerCase()
+    const text = visibleText(element)
+    return text && text.length <= 40 ? `${name} “${text}”` : name
+  }
 
   const hoveredRect = hovered?.getBoundingClientRect()
-  const hoveredLabel = hovered ? pathOf(hovered).split(' > ').slice(-2).join(' > ') : ''
+  const hoveredLabel = hovered
+    ? details
+      ? pathOf(hovered).split(' > ').slice(-2).join(' > ')
+      : plainOf(hovered)
+    : ''
   const visual = threads.filter((thread) => thread.anchor.anchorType === 'visual-node')
 
   const submit = async (event: FormEvent) => {
@@ -180,7 +196,8 @@ export function FeedbackLayer(): ReactNode {
           onSubmit={submit}
         >
           <div className="adl-stack">
-            <div className="adl-mono">{pathOf(draft.element)}</div>
+            <div className="adl-thread-title" style={{ margin: 0 }}>{plainOf(draft.element)}</div>
+            {details ? <div className="adl-mono">{pathOf(draft.element)}</div> : null}
             <textarea
               ref={inputRef}
               className="adl-input adl-textarea"

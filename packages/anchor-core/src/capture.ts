@@ -3,6 +3,7 @@ import { normalizeText, ownText, rectOf, readTokens } from './index-dom.js'
 import { buildSemanticPath } from './semantic-path.js'
 import type {
   AnchorDescriptor,
+  AnchorDisplay,
   AnchorLevel,
   AnchorType,
   Layer,
@@ -30,6 +31,59 @@ function computedValues(element: Element, tokens: TokenRef[]): TokenRef[] {
   return tokens.map((token) =>
     token.property ? { ...token, value: style.getPropertyValue(token.property) || undefined } : token,
   )
+}
+
+const NAME_LIMIT = 40
+const HEADING = 'h1,h2,h3,h4,h5,h6,[role="heading"],[class*="saltText-h"]'
+const SECTION = '[data-mfe],[data-zone],section,article,main,[role="region"]'
+
+/**
+ * The text a person sees on the node: text nodes only, skipping icons and
+ * anything hidden from assistive technology, whitespace collapsed.
+ */
+export function visibleText(element: Element): string {
+  const doc = element.ownerDocument
+  if (!doc) return ''
+  const walker = doc.createTreeWalker(element, 4 /* NodeFilter.SHOW_TEXT */)
+  const parts: string[] = []
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    let skip = false
+    for (let up = node.parentElement; up && up !== element.parentElement; up = up.parentElement) {
+      if (up.namespaceURI === 'http://www.w3.org/2000/svg' || up.getAttribute('aria-hidden') === 'true') {
+        skip = true
+        break
+      }
+    }
+    if (!skip && node.textContent) parts.push(node.textContent)
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+function regionOf(element: Element, root: Element | Document | undefined): string | undefined {
+  for (let up = element.parentElement; up && up !== root; up = up.parentElement) {
+    if (!up.matches(SECTION)) continue
+    const heading = up.querySelector(HEADING)
+    if (heading && !element.contains(heading)) {
+      const text = visibleText(heading)
+      if (text) return text.slice(0, 60)
+    }
+  }
+  return undefined
+}
+
+function captureDisplay(
+  element: Element,
+  root: Element | Document | undefined,
+  semantic: SemanticPath,
+  component: string | undefined,
+): AnchorDisplay {
+  const fromPath = [...semantic.segments].reverse().find((s) => s.kind === 'component')?.name
+  const text = visibleText(element)
+  return {
+    component: component ?? fromPath,
+    text: text && text.length <= NAME_LIMIT ? text : undefined,
+    region: regionOf(element, root),
+  }
 }
 
 function highestLevel(
@@ -75,6 +129,7 @@ export function captureAnchor(
   const descriptor: AnchorDescriptor = {
     anchorType: 'visual-node',
     capturedAt: now(),
+    display: captureDisplay(element, ctx.root, semantic, indexed?.provenance?.component),
     capturedLevel: highestLevel(Boolean(indexed?.provenance), semantic, tokens, Boolean(text)),
     contextLockId: ctx.lock.id,
     provenance: indexed?.provenance,

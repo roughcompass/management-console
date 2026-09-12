@@ -100,7 +100,17 @@ function chip(status: string): Element | null {
   return document.querySelector(`.adl-chip[data-status="${status}"]`)
 }
 
-afterEach(cleanup)
+/** The assertions below read the engineering layer, which is off by default. */
+function showDetails() {
+  const toggle = screen.getByRole('button', { name: 'Technical details' })
+  if (toggle.getAttribute('aria-pressed') !== 'true') fireEvent.click(toggle)
+}
+
+afterEach(() => {
+  cleanup()
+  // The details preference is remembered per reviewer; not across tests.
+  localStorage.clear()
+})
 
 describe('anchored feedback across a rebuild', () => {
   it('captures a comment on a preview node and pins it', () => {
@@ -118,9 +128,16 @@ describe('anchored feedback across a rebuild', () => {
     fireEvent.click(screen.getByText('leave feedback'))
 
     expect(screen.getByText('a failed settlement is an error, not a caution')).toBeDefined()
-    expect(screen.getByText(/PositionsTable > StatusBadge/)).toBeDefined()
+    // The reviewer sees the thing in the words of the page; the anchor status
+    // and the path sit behind the Details disclosure until asked for.
+    expect(screen.getByText(/^Status badge/)).toBeDefined()
+    expect(chip('resolved')?.closest('details')).not.toBeNull()
+    expect(screen.getByText(/PositionsTable > StatusBadge/).closest('details')).not.toBeNull()
     expect(document.querySelector('.adl-pin')?.textContent).toBe('1')
-    expect(chip('resolved')).not.toBeNull()
+
+    showDetails()
+    expect(chip('resolved')?.closest('details')).toBeNull()
+    expect(screen.getByText(/PositionsTable > StatusBadge/).closest('details')).toBeNull()
     restore()
   })
 
@@ -132,6 +149,7 @@ describe('anchored feedback across a rebuild', () => {
     const view = render(
       <Harness html={htmlV1()} lock={lockV1} manifest={manifestV1} buildId="build-a" {...props} />,
     )
+    showDetails()
     fireEvent.click(screen.getByText('leave feedback'))
 
     view.rerender(
@@ -166,8 +184,12 @@ describe('anchored feedback across a rebuild', () => {
     )
 
     await waitFor(() =>
-      expect(screen.getByText('1 lost their anchor in this build')).toBeDefined(),
+      expect(
+        screen.getByText("1 comment can't find what it was about in this build"),
+      ).toBeDefined(),
     )
+    expect(screen.getByText('Not in this build')).toBeDefined()
+    showDetails()
     expect(screen.getByText('100%')).toBeDefined()
     expect(screen.getByText(/why \(5 levels tried\)/)).toBeDefined()
     expect(document.querySelector('.adl-pin')).toBeNull()
@@ -203,31 +225,39 @@ describe('choosing what the agent gets', () => {
       target: { value: 'the two panels sit on different vertical rhythms; use one spacing scale' },
     })
     fireEvent.click(within(composer).getByRole('button', { name: 'Comment' }))
-    expect(screen.getByText(/general · spacing/)).toBeDefined()
+    expect(screen.getByText('Spacing — about the whole preview')).toBeDefined()
     // General feedback is not on a node, so it gets no pin.
     expect(document.querySelectorAll('.adl-pin')).toHaveLength(3)
 
     // #3 is dealt with; #2 is a real comment the reviewer does not want acted on yet.
     fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[2]!)
-    fireEvent.click(screen.getByLabelText('send comment 2 to the agent'))
+    fireEvent.click(screen.getByLabelText('include comment 2 when sent'))
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Submit' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Send' }))
+    // The reviewer's list, in the words of the page ...
+    const list = document.querySelector('.adl-send-list')?.textContent ?? ''
+    expect(list).toContain('Status badge')
+    expect(list).toContain('Spacing — about the whole preview')
+    expect(list).not.toContain('PositionsTable')
+    // ... and the packet itself, one click away, carries both.
     const digest = screen.getByLabelText('what will be sent').textContent ?? ''
     expect(digest).toContain('2 threads to act on (not included: 1 closed, 1 left out by the reviewer)')
     expect(digest).toContain('On specific elements')
+    expect(digest).toContain('1. Status badge')
     expect(digest).toContain('PositionsTable > StatusBadge')
     expect(digest).toContain('About the preview as a whole')
-    expect(digest).toContain('2. spacing')
+    expect(digest).toContain('2. Spacing — about the whole preview')
     expect(digest).toContain('use one spacing scale')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send 2 threads to the agent' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 comments' }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     const sent = onSubmit.mock.calls[0]![0]
     expect(sent.threads.map((thread) => thread.anchorType)).toEqual(['visual-node', 'general'])
+    expect(sent.threads[0]!.label).toMatch(/^Status badge/)
     expect(sent.threads[1]!.topic).toBe('spacing')
     expect(sent.leftOut).toHaveLength(1)
     expect(sent.lock.id).toBe(lockV1.id)
-    expect(screen.getByTestId('last-submission').textContent).toContain(sent.id)
+    expect(screen.getByTestId('last-submission').textContent).toContain('2 comments')
     restore()
   })
 })

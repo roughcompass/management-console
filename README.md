@@ -52,17 +52,20 @@ pnpm demo               # shell on :5273, remotes on :5274 and :5275
 Instrumentation is preview-only and off unless `DE_UI_PROVENANCE_ENABLED=true`;
 `pnpm verify:production` proves a production artifact carries none of it.
 
-In the preview: press **Comment on a node**, click something inside an MFE,
-write a comment; a numbered pin stays on the node. Press **General feedback**
-for anything wider than one element — spacing, form patterns, copy — which gets
-a topic instead of a pin. In the panel, **Close** what is dealt with and untick
-**send to agent** on anything you want kept but not acted on yet; the
-**Submit** tab shows the exact packet that will leave, as text, and sends it
-(the shell records it in `localStorage` under `adl:submissions:<previewId>`
-and prints the digest — Phase 1 has no agent behind it). Then press
-**B · payments-dash 2.5.0 (rebuilt)**. Build B loads a different federated
-module: the same components after a refactor — new file, restructured markup,
-the summary card deleted, the version bumped. Watch what each comment does.
+In the preview: press **Comment on something**, click it, write a comment; a
+numbered pin stays on it and the panel names it the way the page does ("Status
+badge "Failed" in Payments"). Press **General feedback** for anything wider
+than one thing — spacing, form patterns, wording — which gets a topic instead
+of a pin. In the panel, **Close** what is dealt with and untick **Include when
+sent** on anything you want kept but not acted on yet; the **Send** view lists
+what will go and sends it (the shell records it in `localStorage` under
+`adl:submissions:<previewId>` and prints the digest — Phase 1 has no agent
+behind it). Then press **B · payments-dash 2.5.0 (rebuilt)**. Build B loads a
+different federated module: the same components after a refactor — new file,
+restructured markup, the summary card deleted, the version bumped. Watch what
+each comment does. **Technical details** in the panel header shows the paths,
+source references, anchor levels and the Network, Runtime and Build views
+behind all of it; see `docs/embedding.md` for who sees what.
 
 `pnpm test:e2e` runs that walkthrough in a real browser across the real
 federation boundary (needs `npx playwright install chromium`, or

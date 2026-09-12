@@ -10,6 +10,7 @@ import type {
   Layer,
 } from '@adl/anchor-core'
 import { targetSummary } from './parts.js'
+import { describeAnchor } from './plain.js'
 
 export interface SubmissionThread {
   threadId: string
@@ -17,6 +18,8 @@ export interface SubmissionThread {
   anchorStatus: AnchorStatus
   level: AnchorLevel | null
   confidence: number
+  /** The thing in the reviewer's words: "Status badge “Failed” in Payments". */
+  label: string
   /** Semantic path for a node; target summary for everything else. */
   where: string
   provenance?: {
@@ -67,6 +70,7 @@ export function describeThread(thread: CommentThread): SubmissionThread {
     anchorStatus: thread.anchorStatus,
     level: resolution?.level ?? null,
     confidence: resolution?.confidence ?? 0,
+    label: describeAnchor(anchor),
     where,
     provenance: prov
       ? {
@@ -171,7 +175,7 @@ export function formatDigest(
   }
 
   section('On specific elements', nodes, (thread) => {
-    const head = [thread.where]
+    const head = [thread.label, thread.where]
     const prov = thread.provenance
     if (prov) {
       head.push(
@@ -183,8 +187,9 @@ export function formatDigest(
     )
     return head
   })
-  section('About the preview as a whole', general, (thread) => [thread.topic ?? 'general'])
+  section('About the preview as a whole', general, (thread) => [thread.label])
   section('On network, runtime and build', other, (thread) => [
+    thread.label,
     `${thread.anchorType} · ${thread.where}`,
   ])
 

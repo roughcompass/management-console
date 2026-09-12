@@ -153,7 +153,8 @@ export const feedbackStyles = `
 }
 .adl-btn:hover { border-color: var(--salt-accent-borderColor, #2d7ff9); }
 .adl-btn[data-variant='primary'],
-.adl-btn[data-active='true'] {
+.adl-btn[data-active='true'],
+.adl-btn[aria-pressed='true'] {
   background: var(--salt-accent-background, #2d7ff9);
   border-color: var(--salt-accent-background, #2d7ff9);
   color: var(--salt-content-primary-foreground-inverse, #fff);
@@ -169,6 +170,21 @@ export const feedbackStyles = `
 }
 .adl-textarea { resize: vertical; min-height: 64px; }
 .adl-general-composer { top: auto; bottom: 64px; left: 50%; transform: translateX(-50%); }
+.adl-thread-title { font-weight: 600; margin: 8px 0 4px; }
+.adl-disclosure { margin-top: 6px; }
+.adl-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  color: var(--salt-content-secondary-foreground, #9aa3b5);
+}
+.adl-disclosure > summary::-webkit-details-marker { display: none; }
+.adl-disclosure > summary::before { content: '▸ '; }
+.adl-disclosure[open] > summary::before { content: '▾ '; }
+.adl-disclosure > :not(summary) { margin-top: 6px; }
+.adl-send-list { margin: 0; padding-left: 18px; }
+.adl-send-list li { margin-bottom: 8px; }
+.adl-send-list .adl-thread-title { margin: 0 0 2px; }
 .adl-include {
   display: inline-flex;
   align-items: center;
