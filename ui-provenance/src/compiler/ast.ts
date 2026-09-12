@@ -16,6 +16,44 @@ const traverse = ((_traverse as unknown as { default?: typeof _traverse }).defau
 /** Literal props that carry an accessible name, and are usually stable. */
 const ACCESSIBLE_PROPS = new Set(['aria-label', 'aria-labelledby', 'alt', 'title', 'placeholder'])
 
+/**
+ * Design-system props worth recording. In a Salt application the reviewable
+ * decision is almost never a colour - it is which sentiment, which appearance,
+ * which density. Those are the words the feedback will use, so the manifest
+ * records the ones that are statically observable.
+ */
+const LIBRARY_PROPS = new Set([
+  'appearance',
+  'sentiment',
+  'variant',
+  'status',
+  'density',
+  'mode',
+  'theme',
+  'accent',
+  'corner',
+  'size',
+  'align',
+  'zebra',
+  'divider',
+  'bordered',
+  'hoverable',
+])
+
+/** Props a SaltProvider sets for everything beneath it. */
+const PROVIDER_PROPS = ['density', 'mode', 'theme'] as const
+
+export interface LibraryRef {
+  name: string
+  component: string
+  /** The local name the file imported it as. */
+  alias: string
+  /** Statically observable design-system props on this invocation. */
+  props?: Record<string, string>
+  /** Density, mode and theme inherited from the nearest SaltProvider above it. */
+  context?: Record<string, string>
+}
+
 export interface SourceElement {
   file: string
   line: number
@@ -35,7 +73,7 @@ export interface SourceElement {
   siblingOrder: number
   fingerprintParts: FingerprintInput
   fingerprint: string
-  library?: { name: string; component: string }
+  library?: LibraryRef
 }
 
 export interface ParsedFile {
@@ -129,6 +167,23 @@ function literalTextOf(element: t.JSXElement): string[] {
   return out
 }
 
+/** Literal design-system props, values included. Expressions are skipped. */
+function libraryPropsOf(node: t.JSXOpeningElement): Record<string, string> | undefined {
+  const props: Record<string, string> = {}
+  for (const attribute of node.attributes) {
+    if (!t.isJSXAttribute(attribute) || !t.isJSXIdentifier(attribute.name)) continue
+    const name = attribute.name.name
+    if (!LIBRARY_PROPS.has(name)) continue
+    if (attribute.value === null) {
+      props[name] = 'true'
+      continue
+    }
+    const literal = literalAttribute(node, name)
+    if (literal !== null) props[name] = literal
+  }
+  return Object.keys(props).length > 0 ? props : undefined
+}
+
 function accessibleLabelsOf(node: t.JSXOpeningElement): string[] {
   const out: string[] = []
   for (const attribute of node.attributes) {
@@ -173,7 +228,7 @@ export interface ParseOptions {
 export function parseFileElements(code: string, options: ParseOptions): ParsedFile {
   const ast = parseSource(code, options.file)
 
-  const saltImports = new Map<string, { name: string; component: string }>()
+  const saltImports = new Map<string, { name: string; component: string; alias: string }>()
   traverse(ast, {
     ImportDeclaration(path) {
       const source = path.node.source.value
@@ -183,9 +238,17 @@ export function parseFileElements(code: string, options: ParseOptions): ParsedFi
           const imported = t.isIdentifier(specifier.imported)
             ? specifier.imported.name
             : specifier.imported.value
-          saltImports.set(specifier.local.name, { name: source, component: imported })
+          saltImports.set(specifier.local.name, {
+            name: source,
+            component: imported,
+            alias: specifier.local.name,
+          })
         } else if (t.isImportDefaultSpecifier(specifier)) {
-          saltImports.set(specifier.local.name, { name: source, component: 'default' })
+          saltImports.set(specifier.local.name, {
+            name: source,
+            component: 'default',
+            alias: specifier.local.name,
+          })
         }
       }
     },
@@ -239,6 +302,25 @@ export function parseFileElements(code: string, options: ParseOptions): ParsedFi
           neighborShapes: siblings,
         }
 
+        // The nearest enclosing provider in this file decides density and mode
+        // for everything beneath it, and both are ordinary review subjects.
+        let context: Record<string, string> | undefined
+        for (let ancestor = parentIndex; ancestor !== null && ancestor !== undefined; ) {
+          const candidate = elements[ancestor]!
+          if (candidate.elementType.endsWith('SaltProvider')) {
+            const provided = candidate.library?.props
+            if (provided) {
+              const inherited: Record<string, string> = {}
+              for (const key of PROVIDER_PROPS) {
+                if (provided[key]) inherited[key] = provided[key]!
+              }
+              if (Object.keys(inherited).length > 0) context = inherited
+            }
+            break
+          }
+          ancestor = candidate.parentIndex
+        }
+
         const siblingKey = `${parentIndex ?? 'root'}::${name}`
         const siblingOrder = siblingCounts.get(siblingKey) ?? 0
         siblingCounts.set(siblingKey, siblingOrder + 1)
@@ -256,7 +338,15 @@ export function parseFileElements(code: string, options: ParseOptions): ParsedFi
           siblingOrder,
           fingerprintParts: parts,
           fingerprint: sha256(fingerprintInput(parts)),
-          library: salt ? { name: salt.name, component: salt.component } : undefined,
+          library: salt
+            ? {
+                name: salt.name,
+                component: salt.component,
+                alias: salt.alias,
+                props: libraryPropsOf(opening),
+                context,
+              }
+            : undefined,
         }
 
         indexByNode.set(path.node, elements.length)

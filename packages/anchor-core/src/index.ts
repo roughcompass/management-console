@@ -26,6 +26,7 @@ export {
 export {
   OVERLAY_ATTR,
   createResolutionContext,
+  nearestInstanceKey,
   normalizeText,
   ownText,
   readTokens,

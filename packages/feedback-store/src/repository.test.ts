@@ -43,14 +43,14 @@ describe('feedback repository', () => {
   it('round-trips threads without the live DOM node they resolved to', async () => {
     const { repository, store, ctx, root } = seedStore()
     const anchor = captureAnchor(root.querySelector('#badge')!, ctx)
-    const thread = store.createThread({ anchor, author: designer, body: 'wrong blue' })
+    const thread = store.createThread({ anchor, author: designer, body: 'error status, not caution' })
     store.reanchor(ctx, { buildId: 'a' })
     expect(thread.resolution?.element).not.toBeNull()
 
     await repository.saveThreads(PREVIEW, store.threads())
     const [restored] = await repository.listThreads(PREVIEW)
 
-    expect(restored!.comments[0]!.body).toBe('wrong blue')
+    expect(restored!.comments[0]!.body).toBe('error status, not caution')
     expect(restored!.anchor.semantic).toBeDefined()
     // A resolution points at an element from a build that is gone.
     expect(restored!.resolution!.element).toBeNull()
@@ -83,7 +83,7 @@ describe('feedback repository', () => {
     const repository = createInMemoryRepository()
     const { store, ctx, root } = seedStore(repository)
     const anchor = captureAnchor(root.querySelector('#badge')!, ctx)
-    store.createThread({ anchor, author: designer, body: 'wrong blue' })
+    store.createThread({ anchor, author: designer, body: 'error status, not caution' })
     await repository.saveThreads(PREVIEW, store.threads())
     await recordPreviewVersion({ repository, previewId: PREVIEW, lock: lockA, buildId: 'a', label: 'A' })
 
@@ -114,16 +114,16 @@ describe('feedback repository', () => {
     const store = await hydrateFeedbackStore({ repository, previewId: PREVIEW, lock: lockA, buildId: 'a' })
 
     const anchor = captureAnchor(root.querySelector('#badge')!, ctx)
-    const thread = store.createThread({ anchor, author: designer, body: 'wrong blue' })
-    store.addComment(thread.id, designer, 'and denser rows')
+    const thread = store.createThread({ anchor, author: designer, body: 'error status, not caution' })
+    store.addComment(thread.id, designer, 'and high density in the main zone')
     // Saves are coalesced into a microtask.
     await Promise.resolve()
     await Promise.resolve()
 
     const stored = await repository.listThreads(PREVIEW)
     expect(stored[0]!.comments.map((comment) => comment.body)).toEqual([
-      'wrong blue',
-      'and denser rows',
+      'error status, not caution',
+      'and high density in the main zone',
     ])
   })
 

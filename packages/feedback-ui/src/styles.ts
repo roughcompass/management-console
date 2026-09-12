@@ -134,6 +134,57 @@ export const feedbackStyles = `
   color: var(--salt-content-secondary-foreground, #9aa3b5);
   word-break: break-word;
 }
+.adl-stack { display: grid; gap: var(--salt-spacing-100, 8px); }
+.adl-label {
+  font-size: 11px;
+  color: var(--salt-content-secondary-foreground, #9aa3b5);
+}
+.adl-muted { color: var(--salt-content-secondary-foreground, #9aa3b5); margin: 0; }
+.adl-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.adl-metric-value { font-size: 18px; font-weight: 600; }
+.adl-btn {
+  padding: 4px 10px;
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.adl-btn:hover { border-color: var(--salt-accent-borderColor, #2d7ff9); }
+.adl-btn[data-variant='primary'],
+.adl-btn[data-active='true'] {
+  background: var(--salt-accent-background, #2d7ff9);
+  border-color: var(--salt-accent-background, #2d7ff9);
+  color: var(--salt-content-primary-foreground-inverse, #fff);
+}
+.adl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.adl-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  background: var(--salt-container-secondary-background, #14161c);
+  color: inherit;
+  font: inherit;
+}
+.adl-textarea { resize: vertical; min-height: 64px; }
+.adl-tab {
+  flex: 1;
+  padding: 6px 4px;
+  border: var(--salt-size-border, 1px) solid transparent;
+  border-bottom-width: 2px;
+  background: transparent;
+  color: var(--salt-content-secondary-foreground, #9aa3b5);
+  font: inherit;
+  cursor: pointer;
+}
+.adl-tab[aria-selected='true'] {
+  color: var(--salt-content-primary-foreground, #e8eaf0);
+  border-bottom-color: var(--salt-accent-borderColor, #2d7ff9);
+}
+.adl-card {
+  border: var(--salt-size-border, 1px) solid var(--salt-container-primary-borderColor, #2b303b);
+  background: var(--salt-container-primary-background, #1c1f27);
+}
 .adl-chip {
   display: inline-flex;
   align-items: center;

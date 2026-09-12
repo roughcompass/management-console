@@ -67,13 +67,25 @@ internal node is guessed at.
 The Vite adapter injects through the host's existing JSX pass rather than
 regenerating modules. Regenerating works, but it hands other plugins a module
 they did not produce — which is how the federation plugin came to mistake an
-ordinary component for an application entry.
+ordinary component for an application entry. The Webpack adapter runs the same
+analysis from a loader placed before the JSX compile step. Both passes run in a
+production build too, with injection off: there they remove the generated
+attribute and the authored instance keys instead of adding anything.
 
 ## Manifest
 
 One immutable artifact per build: application id, federation name and role,
 repository, commit, build id, package versions, registry hash, and one entry per
 source id with its file, position, component and library.
+
+For a design-system element the library entry records the package, its resolved
+version, the component's real name behind any local alias, the design-system
+props the author set (`appearance`, `sentiment`, `status`, `variant`, and the
+rest of that family) and the `SaltProvider` mode and density in force at that
+point in the tree. That is what makes the feedback answerable: a reviewer saying
+a failed settlement should not read as a caution resolves to a `StatusIndicator`
+with `status="warning"` under `mode="dark"`, not to a colour someone would have
+to go looking for.
 
 The registry is the identity; the manifest is what one build knew about it.
 

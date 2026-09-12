@@ -1,4 +1,15 @@
-import { Button, StackLayout, TBody, TD, TH, THead, TR, Table, Text } from '@salt-ds/core'
+import {
+  Button,
+  StackLayout,
+  StatusIndicator,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  Table,
+  Text,
+} from '@salt-ds/core'
 import { useEffect, useState } from 'react'
 import type { Position } from '../data'
 import { fetchPositions, money } from '../data'
@@ -8,22 +19,22 @@ import { fetchPositions, money } from '../data'
  * names, moved to a new file, restructured their markup and dropped the summary
  * card. This is what every open comment has to survive.
  */
-const STATUS_TOKEN: Record<Position['status'], string> = {
-  settled: '--salt-status-success-foreground',
-  pending: '--salt-status-warning-foreground',
-  failed: '--salt-status-error-foreground',
+const STATUS_SENTIMENT: Record<Position['status'], 'success' | 'warning' | 'error'> = {
+  settled: 'success',
+  pending: 'warning',
+  failed: 'error',
 }
 
+/**
+ * Status reads through Salt's own semantics rather than a colour, so a reviewer
+ * can say "a failed settlement is an error, not a caution" and mean something
+ * the build can act on.
+ */
 export function StatusBadge({ status, instanceKey }: { status: Position['status']; instanceKey: string }) {
   return (
-    <span
-      className="badge badge--pill"
-      data-de-instance-key={instanceKey}
-      data-tokens={`${STATUS_TOKEN[status]}=color;--salt-palette-corner=border-radius`}
-      style={{ color: `var(${STATUS_TOKEN[status]})` }}
-    >
-      <i className="dot" />
-      {status}
+    <span className="status status--dense" data-de-instance-key={instanceKey}>
+      <StatusIndicator status={STATUS_SENTIMENT[status]} size={1} />
+      <Text styleAs="label">{status}</Text>
     </span>
   )
 }
@@ -74,7 +85,6 @@ export default function PaymentsDash() {
           <Button
             appearance="solid"
             sentiment="accented"
-            data-tokens="--salt-actionable-accented-background=background-color"
           >
             New instruction
           </Button>

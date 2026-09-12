@@ -84,7 +84,7 @@ describe('discovery and identity', () => {
       import { Widget } from './Widget'
       export const A = () => (
         <div>
-          <Button>Go</Button>
+          <Button appearance="solid" sentiment="accented">Go</Button>
           <Widget />
         </div>
       )
@@ -94,7 +94,14 @@ describe('discovery and identity', () => {
       'salt',
       'application',
     ])
-    expect(parsed.elements[1]!.library).toEqual({ name: '@salt-ds/core', component: 'Button' })
+    // The invocation's own design-system props are recorded too: in a Salt
+    // application the reviewable decision is which sentiment, not which colour.
+    expect(parsed.elements[1]!.library).toMatchObject({
+      name: '@salt-ds/core',
+      component: 'Button',
+      alias: 'Button',
+      props: { appearance: 'solid', sentiment: 'accented' },
+    })
   })
 })
 

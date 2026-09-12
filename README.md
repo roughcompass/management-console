@@ -23,16 +23,21 @@ re-anchor pass and shown in the toolbar, not reconstructed from logs later.
 | `@adl/anchor-core` | The anchoring SDK: anchors, context locks, the re-anchor chain, crop capture, orphan metering. Framework-agnostic, no dependencies. |
 | `@de/ui-provenance` | The UI Provenance Instrumenter: registry-backed element identity, build-time instrumentation for Vite and Webpack, the Module Federation 2 runtime integration, and the resolution SDK. |
 | `@adl/feedback-store` | The datastore model — comments, threads, anchors, users, preview versions — behind one repository interface, with in-memory and localStorage implementations. |
-| `@adl/feedback-ui` | The toolbar: `mountFeedbackToolbar()`, element picking, comment pins, and the panel for creating, viewing, resolving and replying to feedback. Built with Salt. |
+| `@adl/feedback-ui` | The toolbar: `mountFeedbackToolbar()`, element picking, comment pins, and the panel for creating, viewing, resolving and replying to feedback. Depends on no design system; it styles itself from the Frame's Salt tokens with literal fallbacks. |
 
 | App | What it is |
 |---|---|
 | `apps/shell` | The Frame. A Module Federation 2 host that loads the remotes, pins a preview version, and mounts the toolbar. |
-| `apps/payments-mfe` | A federated remote, exposing `PaymentsDash` at two versions so a rebuild can be watched happening. |
-| `apps/limits-mfe` | A second federated remote, so paths and manifests have to survive more than one origin. |
+| `apps/payments-mfe` | A federated remote built with Vite, exposing `PaymentsDash` at two versions so a rebuild can be watched happening. |
+| `apps/limits-mfe` | A second federated remote, built with **Webpack** and `@module-federation/enhanced`, because that is what many teams use. Same identities, different bundler, different origin. |
 
-Shell and MFEs are built with [Salt](https://www.saltdesignsystem.com/), and the
-toolbar is too — its chrome follows whatever Salt theme the Frame is running.
+The shell and both MFEs are built with
+[Salt](https://www.saltdesignsystem.com/) and run under a `SaltProvider`, so
+feedback on them is feedback about Salt decisions — a failed settlement showing
+a warning `StatusIndicator` rather than an error one, say, not "this is the
+wrong blue". The toolbar itself is not a Salt consumer: it is the tool looking at
+the application, and it reads the Frame's tokens rather than importing its
+components.
 
 ## Quickstart
 
@@ -62,7 +67,9 @@ servers itself.
 
 The Frame mounts the toolbar. The MFEs below it are not modified, do not import
 it, and do not know it is there — which is what makes it work over an MFE the
-reviewer's team does not own.
+reviewer's team does not own. In the shell the whole review layer lives behind
+one dynamic import (`apps/shell/src/review.ts`) that only a preview build
+reaches, so a production build carries none of it.
 
 ```ts
 import { mountFeedbackToolbar } from '@adl/feedback-ui'

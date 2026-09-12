@@ -105,12 +105,12 @@ describe('anchored feedback across a rebuild', () => {
         manifest={manifestV1}
         buildId="build-a"
         selector={`[data-de-provenance-id="${ID.badge}"]`}
-        body="this badge is the wrong blue"
+        body="a failed settlement is an error, not a caution"
       />,
     )
     fireEvent.click(screen.getByText('leave feedback'))
 
-    expect(screen.getByText('this badge is the wrong blue')).toBeDefined()
+    expect(screen.getByText('a failed settlement is an error, not a caution')).toBeDefined()
     expect(screen.getByText(/PositionsTable > StatusBadge/)).toBeDefined()
     expect(document.querySelector('.adl-pin')?.textContent).toBe('1')
     expect(chip('resolved')).not.toBeNull()
@@ -120,7 +120,7 @@ describe('anchored feedback across a rebuild', () => {
   it('keeps the comment attached after a rebuild, and still flags the moved lock', async () => {
     const props = {
       selector: `[data-de-provenance-id="${ID.badge}"]`,
-      body: 'this badge is the wrong blue',
+      body: 'a failed settlement is an error, not a caution',
     }
     const view = render(
       <Harness html={htmlV1()} lock={lockV1} manifest={manifestV1} buildId="build-a" {...props} />,
@@ -132,18 +132,22 @@ describe('anchored feedback across a rebuild', () => {
     )
 
     // The instrumenter's registry carried the source id into the new build, so
-    // the anchor is exact. Staleness is a separate question from anchoring:
-    // the pinned inputs still moved, and the thread still says so.
-    await waitFor(() => expect(chip('resolved')).not.toBeNull())
-    expect(screen.getByText('this badge is the wrong blue')).toBeDefined()
-    expect(screen.getByText(/written against an older context lock/)).toBeDefined()
+    // the anchor stays exact. Staleness is a separate question from anchoring:
+    // the pinned inputs moved, and the thread says so. Waiting on the staleness
+    // notice rather than the chip, because the chip reads the same before and
+    // after the re-anchor pass now that the id survives.
+    await waitFor(() =>
+      expect(screen.getByText(/written against an older context lock/)).toBeDefined(),
+    )
+    expect(chip('resolved')).not.toBeNull()
+    expect(screen.getByText('a failed settlement is an error, not a caution')).toBeDefined()
     expect(screen.getByText(/mfes.payments-dash: 2.4.1/)).toBeDefined()
   })
 
   it('reports the orphan rate and says what the chain tried', async () => {
     const props = {
       selector: `[data-de-provenance-id="${ID.heading}"]`,
-      body: 'this heading is too quiet',
+      body: 'this figure needs a heading above it for the a11y tree',
     }
     const view = render(
       <Harness html={htmlV1()} lock={lockV1} manifest={manifestV1} buildId="build-a" {...props} />,

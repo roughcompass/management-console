@@ -12,7 +12,7 @@ import { createInjectorBabelPlugin } from '../src/compiler/babel.js'
 import { prepareProject } from '../src/compiler/project.js'
 import type { ProvenanceConfig } from '../src/core/types.js'
 import uiProvenanceLoader from '../src/webpack/loader.js'
-import { clearProject, setProject } from '../src/webpack/state.js'
+import { clearProject, setProject, setStripOnly } from '../src/webpack/state.js'
 
 const CONFIG: ProvenanceConfig = {
   applicationId: 'equivalence-app',
@@ -107,6 +107,47 @@ describe('bundler adapters', () => {
     for (const id of webpackIds) expect(webpackManifest.sources[id]).toBeDefined()
     expect(viteManifest.schemaVersion).toBe(webpackManifest.schemaVersion)
     expect(Object.keys(viteManifest.sources)).toEqual(Object.keys(webpackManifest.sources))
+
+    clearProject(root)
+    await rm(root, { recursive: true, force: true })
+  }, 60_000)
+
+  it('strips the authored keys in both bundlers when instrumentation is off', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'uip-strip-'))
+    await project(root)
+
+    // Webpack: the plugin registered no project, so the loader removes instead.
+    setStripOnly(root)
+    const webpackCode = uiProvenanceLoader.call(
+      { rootContext: root, resourcePath: join(root, 'src/Widget.tsx') },
+      SOURCE,
+    )
+
+    // Vite: the same pass, with injection disabled.
+    const babel = transformSync(SOURCE, {
+      filename: join(root, 'src/Widget.tsx'),
+      cwd: root,
+      root,
+      configFile: false,
+      babelrc: false,
+      plugins: [
+        syntaxJsx,
+        [syntaxTypescript, { isTSX: true }],
+        createInjectorBabelPlugin(
+          { elementsFor: () => [], idsFor: () => new Map(), enabled: false },
+          root,
+        ),
+      ],
+    })
+    const viteCode = babel?.code ?? ''
+
+    // An author's own key is preview scaffolding: production keeps no trace.
+    for (const code of [webpackCode, viteCode]) {
+      expect(code).not.toContain('data-de-instance-key')
+      expect(code).not.toContain('data-de-provenance-id')
+      // And the component itself is still the component.
+      expect(code).toContain('className="widget"')
+    }
 
     clearProject(root)
     await rm(root, { recursive: true, force: true })

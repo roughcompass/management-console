@@ -1,18 +1,32 @@
 import {
+  Avatar,
+  BorderItem,
+  BorderLayout,
   Button,
   Card,
   Checkbox,
   Dialog,
   Dropdown,
+  FlexLayout,
   Input,
+  LinearProgress,
   Link,
+  NavigationItem,
   Option,
+  Pill,
   SaltProvider,
+  Spinner,
+  StackLayout,
+  StatusIndicator,
   TBody,
   TD,
+  TH,
+  THead,
   TR,
   Table,
   Text,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@salt-ds/core'
 import '@salt-ds/theme/index.css'
 import { StrictMode, useEffect, useState } from 'react'
@@ -74,12 +88,150 @@ const CASES: Case[] = [
     ),
   },
   {
+    component: 'StatusIndicator',
+    package: '@salt-ds/core',
+    render: (id) => <StatusIndicator status="error" data-de-provenance-id={id} />,
+  },
+  { component: 'Pill', package: '@salt-ds/core', render: (id) => <Pill data-de-provenance-id={id}>Markets</Pill> },
+  {
     component: 'SaltProvider',
     package: '@salt-ds/core',
     render: (id) => (
       <SaltProvider density="high">
         <div data-de-provenance-id={id}>themed</div>
       </SaltProvider>
+    ),
+  },
+  // Everything else the fixtures actually render. A Salt-first application is
+  // mostly Salt components, so the catalog has to cover what it uses or most
+  // of the page resolves to an ancestor instead of to itself.
+  { component: 'Text', package: '@salt-ds/core', render: (id) => <Text data-de-provenance-id={id}>Positions</Text> },
+  { component: 'Avatar', package: '@salt-ds/core', render: (id) => <Avatar name="Miles Okonjo" data-de-provenance-id={id} /> },
+  { component: 'Spinner', package: '@salt-ds/core', render: (id) => <Spinner size="small" data-de-provenance-id={id} /> },
+  { component: 'StackLayout', package: '@salt-ds/core', render: (id) => <StackLayout data-de-provenance-id={id}><Text>a</Text></StackLayout> },
+  { component: 'FlexLayout', package: '@salt-ds/core', render: (id) => <FlexLayout data-de-provenance-id={id}><Text>a</Text></FlexLayout> },
+  {
+    component: 'BorderLayout',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <BorderLayout data-de-provenance-id={id}>
+        <BorderItem position="center">centre</BorderItem>
+      </BorderLayout>
+    ),
+  },
+  {
+    component: 'BorderItem',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <BorderLayout>
+        <BorderItem position="center" data-de-provenance-id={id}>
+          centre
+        </BorderItem>
+      </BorderLayout>
+    ),
+  },
+  {
+    component: 'NavigationItem',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <NavigationItem href="#payments" data-de-provenance-id={id}>
+        Payments
+      </NavigationItem>
+    ),
+  },
+  { component: 'LinearProgress', package: '@salt-ds/core', render: (id) => <LinearProgress value={62} data-de-provenance-id={id} /> },
+  {
+    component: 'ToggleButtonGroup',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <ToggleButtonGroup defaultValue="a" data-de-provenance-id={id}>
+        <ToggleButton value="a">A</ToggleButton>
+      </ToggleButtonGroup>
+    ),
+  },
+  {
+    component: 'ToggleButton',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <ToggleButtonGroup defaultValue="a">
+        <ToggleButton value="a" data-de-provenance-id={id}>
+          A
+        </ToggleButton>
+      </ToggleButtonGroup>
+    ),
+  },
+  {
+    component: 'THead',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <Table>
+        <THead data-de-provenance-id={id}>
+          <TR>
+            <TH>Account</TH>
+          </TR>
+        </THead>
+      </Table>
+    ),
+  },
+  {
+    component: 'TH',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <Table>
+        <THead>
+          <TR>
+            <TH data-de-provenance-id={id}>Account</TH>
+          </TR>
+        </THead>
+      </Table>
+    ),
+  },
+  {
+    component: 'TBody',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <Table>
+        <TBody data-de-provenance-id={id}>
+          <TR>
+            <TD>8891</TD>
+          </TR>
+        </TBody>
+      </Table>
+    ),
+  },
+  {
+    component: 'TR',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <Table>
+        <TBody>
+          <TR data-de-provenance-id={id}>
+            <TD>8891</TD>
+          </TR>
+        </TBody>
+      </Table>
+    ),
+  },
+  {
+    component: 'TD',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <Table>
+        <TBody>
+          <TR>
+            <TD data-de-provenance-id={id}>8891</TD>
+          </TR>
+        </TBody>
+      </Table>
+    ),
+  },
+  {
+    component: 'Option',
+    package: '@salt-ds/core',
+    render: (id) => (
+      <Dropdown open defaultSelected={['USD']}>
+        <Option value="USD" data-de-provenance-id={id} />
+      </Dropdown>
     ),
   },
 ]

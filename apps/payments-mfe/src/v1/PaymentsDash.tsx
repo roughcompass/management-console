@@ -3,6 +3,7 @@ import {
   Card,
   Dialog,
   StackLayout,
+  StatusIndicator,
   TBody,
   TD,
   TH,
@@ -15,21 +16,22 @@ import { useEffect, useState } from 'react'
 import type { Position } from '../data'
 import { fetchPositions, money } from '../data'
 
-const STATUS_TOKEN: Record<Position['status'], string> = {
-  settled: '--salt-status-success-foreground',
-  pending: '--salt-status-warning-foreground',
-  failed: '--salt-status-error-foreground',
+const STATUS_SENTIMENT: Record<Position['status'], 'success' | 'warning' | 'error'> = {
+  settled: 'success',
+  pending: 'warning',
+  failed: 'error',
 }
 
+/**
+ * Status reads through Salt's own semantics rather than a colour, so a reviewer
+ * can say "a failed settlement is an error, not a caution" and mean something
+ * the build can act on.
+ */
 export function StatusBadge({ status, instanceKey }: { status: Position['status']; instanceKey: string }) {
   return (
-    <span
-      className="badge"
-      data-de-instance-key={instanceKey}
-      data-tokens={`${STATUS_TOKEN[status]}=color;--salt-palette-corner=border-radius`}
-      style={{ color: `var(${STATUS_TOKEN[status]})` }}
-    >
-      {status}
+    <span className="status" data-de-instance-key={instanceKey}>
+      <StatusIndicator status={STATUS_SENTIMENT[status]} size={1} />
+      <Text>{status}</Text>
     </span>
   )
 }
@@ -38,9 +40,9 @@ export function SummaryCard({ positions }: { positions: Position[] }) {
   const unsettled = positions.filter((position) => position.status !== 'settled')
   const total = unsettled.reduce((sum, position) => sum + position.notional, 0)
   return (
-    <Card data-tokens="--salt-container-primary-background=background-color">
+    <Card>
       <StackLayout gap={0.5}>
-        <Text styleAs="label" color="secondary" data-tokens="--salt-text-label-fontSize=font-size">
+        <Text styleAs="label" color="secondary">
           Unsettled exposure
         </Text>
         <Text styleAs="display3">{money(total, 'USD')}</Text>
@@ -96,7 +98,6 @@ export default function PaymentsDash() {
           <Button
             appearance="solid"
             sentiment="accented"
-            data-tokens="--salt-actionable-accented-background=background-color"
             onClick={() => setInstructionOpen(true)}
           >
             New instruction

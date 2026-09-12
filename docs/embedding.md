@@ -48,20 +48,28 @@ content visible can inset on that; one that does not, ignores it.
 
 ## Style isolation, and its limit
 
-The toolbar is built with Salt, and its own CSS is scoped under `.adl-root`,
-which sets the properties a preview's global CSS is most likely to leak into it
-(box-sizing, font, line-height, colour). Colour, type and spacing come from Salt
-tokens, so the toolbar follows whatever theme the Frame is running.
+The toolbar is **not** built with the host's design system, and that is
+deliberate. The application under review is a Salt application; the toolbar is
+the tool looking at it. Building the tool out of the same components would make
+a reviewer's "this button is wrong" ambiguous about which button, put a second
+`SaltProvider` in the page (Salt warns about exactly that), and tie the review
+layer's release to the application's design-system version.
 
-It is **not** in a shadow root. Salt injects component CSS into the document at
-runtime and has no way to target a shadow root in this version, so a shadow root
-would leave every Salt component unstyled. The trade is deliberate: a preview
-with aggressive global CSS (`* { font-family: ... }`, `button { ... }`) can still
-reach the toolbar. If that turns out to bite, the fix is a shadow root plus a
-build step that inlines Salt's CSS, not a pile of `!important`.
+Its own CSS is scoped under `.adl-root`, which sets the properties a preview's
+global CSS is most likely to leak into it (box-sizing, font, line-height,
+colour). Every value is a Salt token with a literal fallback:
 
-The toolbar needs Salt's theme CSS present in the page. Any Salt-based Frame
-already has it.
+```css
+.adl-root { background: var(--salt-container-primary-background, #1a1d21); }
+```
+
+So over a Salt Frame the toolbar picks up that Frame's theme, and over a Frame
+built with something else it still renders. It needs no design-system package of
+its own and declares none.
+
+It is not in a shadow root. A preview with aggressive global CSS
+(`* { font-family: ... }`, `button { ... }`) can still reach it. If that turns
+out to bite, the fix is a shadow root, not a pile of `!important`.
 
 ## Persistence, and what is not shipped
 

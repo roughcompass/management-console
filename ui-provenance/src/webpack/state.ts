@@ -17,4 +17,19 @@ export function getProject(root: string): Project | undefined {
 
 export function clearProject(root: string): void {
   projects.delete(root)
+  stripOnly.delete(root)
+}
+
+/**
+ * A build that asked for no instrumentation still has to remove the authored
+ * keys, so the loader stays in the rule and is told to strip instead of inject.
+ */
+const stripOnly = new Set<string>()
+
+export function setStripOnly(root: string): void {
+  stripOnly.add(root)
+}
+
+export function isStripOnly(root: string): boolean {
+  return stripOnly.has(root)
 }

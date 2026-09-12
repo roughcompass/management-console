@@ -8,7 +8,6 @@ import type {
 } from '@adl/anchor-core'
 import type { FeedbackRepository, PreviewVersion } from '@adl/feedback-store'
 import { hydrateFeedbackStore } from '@adl/feedback-store'
-import { SaltProvider } from '@salt-ds/core'
 import type { ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
@@ -86,7 +85,7 @@ function ToolbarApp(props: AppProps): ReactNode {
   }
 
   return (
-    <SaltProvider mode={props.mode ?? 'dark'} density={props.density ?? 'high'}>
+    <div className="adl-root" data-adl-mode={props.mode ?? 'dark'}>
       <FeedbackProvider
         actor={props.actor}
         previewId={props.previewId}
@@ -108,7 +107,7 @@ function ToolbarApp(props: AppProps): ReactNode {
         <FeedbackDock />
         <PanelSlot />
       </FeedbackProvider>
-    </SaltProvider>
+    </div>
   )
 }
 

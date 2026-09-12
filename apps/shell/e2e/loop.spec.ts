@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-const BADGE = '[data-mfe="payments-dash"] tbody tr:first-child .badge'
+// The third row is the failed settlement, so the comment on it is one a
+// reviewer of a Salt application would actually write.
+const FAILED_STATUS = '[data-mfe="payments-dash"] tbody tr:nth-child(3) .status'
 const SUMMARY_CARD = '[data-mfe="payments-dash"] .saltCard'
 const THREAD = '.adl-thread'
 
@@ -22,7 +24,7 @@ async function comment(page: Page, selector: string, body: string) {
 }
 
 async function rebuild(page: Page) {
-  await page.getByRole('button', { name: /payments-dash 2\.5\.0/ }).click()
+  await page.getByRole('radio', { name: /payments-dash 2\.5\.0/ }).click()
   await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible()
 }
 
@@ -40,7 +42,7 @@ test('mounts two federated remotes under one instrumented Frame', async ({ page 
 })
 
 test('anchors a comment to a node inside a remote', async ({ page }) => {
-  await comment(page, BADGE, 'this badge is the wrong blue')
+  await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
 
   const pin = page.locator('.adl-pin')
   await expect(pin).toHaveCount(1)
@@ -57,15 +59,17 @@ test('anchors a comment to a node inside a remote', async ({ page }) => {
 })
 
 test('carries a comment across a remote version bump and says how it held', async ({ page }) => {
-  await comment(page, BADGE, 'this badge is the wrong blue')
+  await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
   await rebuild(page)
 
   const thread = page.locator(THREAD).first()
-  await expect(thread.getByText('this badge is the wrong blue')).toBeVisible()
-  // Same level, lower confidence: the authored instance key carried it into a
-  // new file with restructured markup.
+  await expect(thread.getByText('a failed settlement is an error, not a caution')).toBeVisible()
+  // 2.5.0 is a different module, so the emitted source id from 2.4.1 is gone.
+  // The component name and the authored instance key carry the anchor instead,
+  // which is a weaker claim than an exact id match - so the thread says
+  // degraded rather than pretending nothing moved.
   await expect(thread.locator('.adl-chip[data-status="degraded"]')).toBeVisible()
-  await expect(thread).toContainText('provenance · 0.80')
+  await expect(thread).toContainText('provenance · 0.75')
   await expect(thread.locator('.adl-stale')).toContainText('mfes.payments-dash: 2.4.1 → 2.5.0')
   await expect(page.locator('.adl-pin')).toHaveCount(1)
 })
@@ -125,12 +129,12 @@ test('captures feedback on things that are not on screen', async ({ page }) => {
 })
 
 test('keeps threads across a reload of the preview', async ({ page }) => {
-  await comment(page, BADGE, 'this badge is the wrong blue')
+  await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
   await page.reload()
   await page.waitForSelector('[data-mfe="payments-dash"] tbody tr')
 
   await page.getByRole('button', { name: /Show feedback/ }).click()
   const thread = page.locator(THREAD).first()
-  await expect(thread.getByText('this badge is the wrong blue')).toBeVisible()
+  await expect(thread.getByText('a failed settlement is an error, not a caution')).toBeVisible()
   await expect(thread.locator('.adl-chip[data-status="resolved"]')).toBeVisible()
 })

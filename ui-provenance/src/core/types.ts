@@ -2,6 +2,23 @@ export type SchemaVersion = '1.0'
 
 export type ElementKind = 'host' | 'application' | 'salt'
 
+/**
+ * What a design-system invocation was, as the build saw it. In a Salt
+ * application the reviewable decision is which sentiment or density was used,
+ * so those travel with the anchor rather than being reconstructed later.
+ */
+export interface LibraryProvenance {
+  name: string
+  version: string
+  component: string
+  /** The local name the file imported it as. */
+  alias?: string
+  /** Statically observable design-system props on this invocation. */
+  props?: Record<string, string>
+  /** Density, mode and theme from the nearest SaltProvider above it. */
+  context?: Record<string, string>
+}
+
 // ---------------------------------------------------------------------------
 // Registry: the durable, source-controlled identity
 // ---------------------------------------------------------------------------
@@ -53,7 +70,7 @@ export interface ManifestSourceEntry {
   elementKind: ElementKind
   parentSourceId: string | null
   /** Set for recognised design-system invocations. */
-  library?: { name: string; version: string; component: string }
+  library?: LibraryProvenance
   /** Whether the build injected an attribute, and why not when it did not. */
   instrumented: boolean
   instrumentationNote?: string
@@ -109,7 +126,7 @@ export interface ProvenanceAnchor {
     enclosingComponent?: string
     elementType?: string
   }
-  library?: { name: string; version: string; component?: string }
+  library?: LibraryProvenance
   /**
    * Hashes, never raw text. The review application captures approved display
    * context separately; this payload travels with the anchor.

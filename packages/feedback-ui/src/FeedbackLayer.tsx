@@ -1,5 +1,4 @@
 import { OVERLAY_ATTR, buildSemanticPath, formatSemanticPath } from '@adl/anchor-core'
-import { Button, MultilineInput, StackLayout } from '@salt-ds/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -179,27 +178,26 @@ export function FeedbackLayer(): ReactNode {
           }}
           onSubmit={submit}
         >
-          <StackLayout gap={1}>
+          <div className="adl-stack">
             <div className="adl-mono">{pathOf(draft.element)}</div>
-            <MultilineInput
-              textAreaRef={inputRef}
-              value={body}
+            <textarea
+              ref={inputRef}
+              className="adl-input adl-textarea"
               rows={3}
+              aria-label="comment"
               placeholder="What should change here?"
-              textAreaProps={{
-                'aria-label': 'comment',
-                onChange: (event) => setBody(event.target.value),
-              }}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
             />
             <div className="adl-row" style={{ justifyContent: 'flex-end' }}>
-              <Button appearance="transparent" type="button" onClick={() => setDraft(null)}>
+              <button type="button" className="adl-btn" onClick={() => setDraft(null)}>
                 Cancel
-              </Button>
-              <Button appearance="solid" sentiment="accented" type="submit" disabled={saving}>
+              </button>
+              <button type="submit" className="adl-btn" data-variant="primary" disabled={saving}>
                 Comment
-              </Button>
+              </button>
             </div>
-          </StackLayout>
+          </div>
         </form>
       ) : null}
     </div>,

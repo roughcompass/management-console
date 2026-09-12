@@ -8,7 +8,7 @@ export interface Limit {
   cap: number
 }
 
-const API = import.meta.env.VITE_LIMITS_API ?? 'http://localhost:5275'
+const API = process.env.LIMITS_API ?? 'http://localhost:5275'
 
 async function fetchLimits(): Promise<Limit[]> {
   const res = await fetch(`${API}/api/limits`)

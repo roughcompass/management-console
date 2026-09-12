@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-12T01:37:02.166Z",
+  "generatedAt": "2026-09-12T02:19:20.841Z",
   "entries": [
     {
       "component": "Button",
@@ -8,7 +8,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <button>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Input",
@@ -16,7 +16,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <div>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Checkbox",
@@ -24,7 +24,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <label>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Dropdown",
@@ -32,7 +32,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <button>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Card",
@@ -40,7 +40,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <div>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Link",
@@ -48,7 +48,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <a>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Dialog",
@@ -56,7 +56,7 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <div>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "Table",
@@ -64,7 +64,23 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <table>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "StatusIndicator",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <svg>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "Pill",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <button>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
     },
     {
       "component": "SaltProvider",
@@ -72,7 +88,143 @@
       "version": "1.67.0",
       "compatibility": "forwards-data-attributes",
       "evidence": "attribute reached one <div>",
-      "testedAt": "2026-09-12T01:37:02.166Z"
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "Text",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "Avatar",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "Spinner",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "StackLayout",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "FlexLayout",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "BorderLayout",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "BorderItem",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "NavigationItem",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "LinearProgress",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "ToggleButtonGroup",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "ToggleButton",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <button>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "THead",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <thead>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "TH",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <th>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "TBody",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <tbody>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "TR",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <tr>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "TD",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <td>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
+    },
+    {
+      "component": "Option",
+      "package": "@salt-ds/core",
+      "version": "1.67.0",
+      "compatibility": "forwards-data-attributes",
+      "evidence": "attribute reached one <div>",
+      "testedAt": "2026-09-12T02:19:20.841Z"
     }
   ]
 }

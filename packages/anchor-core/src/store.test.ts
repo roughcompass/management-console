@@ -28,13 +28,13 @@ describe('feedback store', () => {
 
   it('gives every thread a named owner at creation', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'wrong blue' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'error status, not caution' })
     expect(thread.owner).toEqual(designer)
 
     const assigned = store.createThread({
       anchor: at(`[data-de-provenance-id="${ID.button}"]`),
       author: designer,
-      body: 'should use the entitlement-gated hook',
+      body: 'should go through the entitlement-gated hook',
       owner: engineer,
     })
     expect(assigned.owner).toEqual(engineer)
@@ -42,9 +42,9 @@ describe('feedback store', () => {
 
   it('re-anchors the open set against a rebuild and reports the orphan rate', () => {
     const { store, at } = seed()
-    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'badge is the wrong blue' })
-    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.button}"]`), author: engineer, body: 'primary action, not secondary' })
-    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'this heading is too quiet' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'failed settlement should use the error status' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.button}"]`), author: engineer, body: 'this is the only primary action here, so the one beside it should be bordered' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'this figure needs a heading above it for the a11y tree' })
 
     const snapshot = store.reanchor(rebuild(), { buildId: 'build-b' })
 
@@ -64,7 +64,7 @@ describe('feedback store', () => {
 
   it('flags staleness as the diff between the two locks, never silently', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'denser rows' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'high density in the main zone' })
     expect(thread.stale).toBe(false)
 
     store.reanchor(rebuild(), { buildId: 'build-b' })
@@ -78,7 +78,7 @@ describe('feedback store', () => {
 
   it('leaves resolved threads out of the re-anchor pass', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'done with this' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'resolved in the last revision' })
     store.setStatus(thread.id, 'resolved')
 
     const snapshot = store.reanchor(rebuild(), { buildId: 'build-b' })
@@ -88,7 +88,7 @@ describe('feedback store', () => {
 
   it('keeps per-build history so orphan rate can be compared across rebuilds', () => {
     const { store, ctx, at } = seed()
-    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'wrong blue' })
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'error status, not caution' })
 
     store.reanchor(ctx, { buildId: 'build-a' })
     store.reanchor(rebuild(), { buildId: 'build-b' })
@@ -104,7 +104,7 @@ describe('feedback store', () => {
     const events: string[] = []
     store.subscribe((event) => events.push(event.type))
 
-    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'wrong blue' })
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'error status, not caution' })
     store.addComment(thread.id, engineer, 'that is an L2 token change')
     store.reanchor(rebuild(), { buildId: 'build-b' })
 

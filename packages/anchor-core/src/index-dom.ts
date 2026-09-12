@@ -93,10 +93,28 @@ export function rectOf(element: Element): Rect {
   }
 }
 
+/**
+ * The nearest authored instance key at or above this element. A reviewer
+ * clicking the label inside a row is commenting on that row, and the key that
+ * identifies it sits on the row, not on the label.
+ */
+export function nearestInstanceKey(element: Element, root?: Element | Document): string | undefined {
+  const stopAt = root instanceof Element ? root : undefined
+  let node: Element | null = element
+  while (node) {
+    const key = node.getAttribute(ATTR.provKey)
+    if (key !== null) return key
+    if (node === stopAt) break
+    node = node.parentElement
+  }
+  return undefined
+}
+
 export function readProvenance(
   element: Element,
   manifest: ProvenanceManifest | undefined,
   ordinal: number,
+  root?: Element | Document,
 ): ProvenanceRef | undefined {
   const raw = provAttr(element)
   if (!raw) return undefined
@@ -115,7 +133,7 @@ export function readProvenance(
     column: node.column,
     component: node.component,
     element: node.element,
-    instanceKey: element.getAttribute(ATTR.provKey) ?? undefined,
+    instanceKey: nearestInstanceKey(element, root),
     ordinal,
   }
 }
@@ -165,7 +183,7 @@ export function createResolutionContext(options: ResolutionContextOptions): Reso
     if (raw) {
       const ordinal = provOrdinals.get(raw) ?? 0
       provOrdinals.set(raw, ordinal + 1)
-      provenance = readProvenance(element, options.manifest, ordinal)
+      provenance = readProvenance(element, options.manifest, ordinal, root)
     }
 
     const own = ownText(element)

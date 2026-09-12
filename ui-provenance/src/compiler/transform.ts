@@ -61,6 +61,41 @@ export function decideInjection(
 }
 
 /**
+ * What a preview build adds, and what an author adds for a preview build. A
+ * production artifact keeps neither: it should carry no trace that the loop
+ * exists. The Vite adapter strips these in its babel pass; this is the same
+ * removal for a build whose transform runs as a loader.
+ */
+const STRIPPED = new Set<string>([ATTR.sourceId, ATTR.explicitKey, ATTR.instanceKey])
+
+export function stripProvenanceSource(code: string, file: string): InstrumentResult | null {
+  if (![...STRIPPED].some((attribute) => code.includes(attribute))) return null
+  const ast = parseSource(code, file)
+  let removed = 0
+
+  traverse(ast, {
+    JSXOpeningElement(path) {
+      const attributes = path.node.attributes
+      for (let position = attributes.length - 1; position >= 0; position--) {
+        const attribute = attributes[position]!
+        if (!t.isJSXAttribute(attribute) || !t.isJSXIdentifier(attribute.name)) continue
+        if (!STRIPPED.has(attribute.name.name)) continue
+        attributes.splice(position, 1)
+        removed++
+      }
+    },
+  })
+
+  if (removed === 0) return null
+  const result = generate(
+    ast,
+    { sourceMaps: true, sourceFileName: file, retainLines: true },
+    code,
+  )
+  return { code: result.code, map: result.map, injections: [] }
+}
+
+/**
  * Injects the source id into eligible elements and records why it did not for
  * the rest. It never wraps, never relies on display: contents, and never moves
  * a node: the rendered tree the reviewer sees must be the tree the application

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T01:27:48.515Z",
+  "generatedAt": "2026-09-12T02:18:52.490Z",
   "forbidden": [
     "data-de-provenance-",
     "data-de-instance-key",
@@ -18,12 +18,12 @@
     },
     {
       "app": "apps/limits-mfe",
-      "files": 30,
+      "files": 20,
       "offenders": [],
       "manifestPresent": false,
       "guard": {
         "guarded": true,
-        "message": "\n> @adl/limits-mfe@0.1.0 build /home/user/management-console/apps/limits-mfe\n> vite build\n\n/home/user/management-console/apps/limits-mfe:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @adl/limits-mfe@0.1.0 buil"
+        "message": "\n> @adl/limits-mfe@0.1.0 build /home/user/management-console/apps/limits-mfe\n> webpack --mode production\n\n/home/user/management-console/apps/limits-mfe:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @adl/limits"
       }
     },
     {

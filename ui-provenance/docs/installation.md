@@ -67,16 +67,36 @@ export default defineConfig({
 ### Webpack
 
 ```js
-const { UiProvenanceWebpackPlugin, loaderPath } = require('@de/ui-provenance/webpack')
+import { UiProvenanceWebpackPlugin, loaderPath } from '@de/ui-provenance/webpack'
 
-module.exports = {
-  plugins: [new UiProvenanceWebpackPlugin()],
-  module: { rules: [{ test: /\.[jt]sx$/, use: [loaderPath] }] },
+export default {
+  module: {
+    rules: [
+      {
+        test: /\.[jt]sx?$/,
+        exclude: /node_modules/,
+        // Loaders run right to left: provenance sees the author's JSX first,
+        // before the JSX itself is compiled away.
+        use: [babelLoader, loaderPath],
+      },
+    ],
+  },
+  plugins: [new UiProvenanceWebpackPlugin({ root: __dirname })],
 }
 ```
 
-Both adapters share one analysis pass, so equivalent source produces equivalent
-identities and the same manifest schema.
+Leave the loader in the rule for every build, including production. With
+instrumentation off the plugin registers no project and the loader switches from
+injecting to stripping, so an authored `data-de-instance-key` never reaches a
+production artifact. The plugin emits `ui-provenance-manifest.json` as a build
+asset, next to the remote entry.
+
+`apps/limits-mfe` in this repository is a working example: Webpack,
+`@module-federation/enhanced`, a module-type remote entry consumed by a Vite
+host. Both adapters share one analysis pass, so equivalent source produces
+equivalent identities and the same manifest schema - the host resolves an
+element in the Webpack remote through exactly the same chain it uses for the
+Vite one.
 
 ## 3. Wire the host
 

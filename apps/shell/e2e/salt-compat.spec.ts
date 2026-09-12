@@ -17,6 +17,7 @@ type Compatibility =
   | 'composite-no-single-root'
   | 'unsupported'
 
+/** The set the specification names. The probe covers more. */
 const REQUIRED = [
   'Button',
   'Input',
@@ -72,7 +73,8 @@ test('generates the Salt compatibility catalog from the rendered DOM', async ({ 
   const results = await page.evaluate(
     () => (window as unknown as { __SALT_COMPAT__?: ProbeResult[] }).__SALT_COMPAT__ ?? [],
   )
-  expect(results.map((result) => result.component).sort()).toEqual([...REQUIRED].sort())
+  const probed = results.map((result) => result.component)
+  for (const component of REQUIRED) expect(probed).toContain(component)
 
   const saltVersion = JSON.parse(
     await readFile(
@@ -103,12 +105,24 @@ test('generates the Salt compatibility catalog from the rendered DOM', async ({ 
     await writeFile(path, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8')
   }
 
-  // Every required component must be classified; what it classifies as is
-  // evidence, not a pass criterion.
-  for (const entry of catalog.entries) {
-    expect(REQUIRED).toContain(entry.component)
-    expect(entry.evidence.length).toBeGreaterThan(0)
+  // What a component classifies as is evidence, not a pass criterion. What is
+  // a pass criterion: an application may not render a Salt component the suite
+  // has never tested, or most of its page resolves to an ancestor.
+  for (const entry of catalog.entries) expect(entry.evidence.length).toBeGreaterThan(0)
+
+  const { glob } = await import('node:fs/promises')
+  const used = new Set<string>()
+  for await (const registryPath of glob(join(process.cwd(), '../*/.ui-provenance/registry.json'))) {
+    const registry = JSON.parse(await readFile(registryPath, 'utf8')) as {
+      entries: Array<{ status: string; elementKind: string; elementType: string }>
+    }
+    for (const entry of registry.entries) {
+      if (entry.status === 'active' && entry.elementKind === 'salt') used.add(entry.elementType)
+    }
   }
+  const catalogued = new Set(catalog.entries.map((entry) => entry.component))
+  const untested = [...used].filter((component) => !catalogued.has(component)).sort()
+  expect(untested, 'Salt components rendered by the fixtures but never probed').toEqual([])
   // eslint-disable-next-line no-console
   console.log(
     catalog.entries

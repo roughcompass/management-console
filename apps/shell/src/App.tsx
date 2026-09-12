@@ -1,13 +1,10 @@
-import { adaptUiProvenanceManifest, mergeProvenanceManifests } from '@adl/anchor-core'
-import type { BuildReport, ProvenanceManifest } from '@adl/anchor-core'
-import { getProvenanceRuntime } from '@de/ui-provenance/runtime'
-import type { FeedbackToolbarHandle, PreviewRecorder } from '@adl/feedback-ui'
-import { mountFeedbackToolbar } from '@adl/feedback-ui'
-import type { FeedbackRepository } from '@adl/feedback-store'
-import { Button, Text } from '@salt-ds/core'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { lazy } from 'react'
+import { BorderItem, BorderLayout, FlexLayout, Text, ToggleButton, ToggleButtonGroup } from '@salt-ds/core'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Frame } from './Frame'
+import { BUILDS } from './previews'
+import type { PreviewBuild } from './previews'
+import { remoteComponent } from './remotes'
+import { selectPreview, selectedPreview } from './review-bridge'
 
 // Preview-only, and dynamically imported so a production bundle does not carry
 // the review runtime at all.
@@ -19,24 +16,16 @@ const ReviewLayerFixture = REVIEW_ENABLED
       import('./ReviewLayerFixture').then((module) => ({ default: module.ReviewLayerFixture })),
     )
   : null
-import { BUILDS } from './previews'
-import type { PreviewBuild } from './previews'
-import { onRemoteLoaded, remoteComponent } from './remotes'
 
-const REVIEWER = { id: 'u-dw', name: 'Dana Whitfield', role: 'design' } as const
-const PREVIEW_ID = 'pr-1042-payments-dash'
+export const PREVIEW_ID = 'pr-1042-payments-dash'
 
-export interface AppProps {
-  recorder: PreviewRecorder
-  repository: FeedbackRepository
-}
-
-export function App({ recorder, repository }: AppProps) {
-  const previewRef = useRef<HTMLDivElement>(null)
-  const toolbarRef = useRef<FeedbackToolbarHandle | null>(null)
-  const [build, setBuild] = useState<PreviewBuild>(BUILDS[0]!)
-  const [manifest, setManifest] = useState<ProvenanceManifest>()
-  const [buildReport, setBuildReport] = useState<BuildReport>()
+/**
+ * The application under review. It renders the Frame and the pinned remotes and
+ * knows nothing about feedback: the review layer attaches itself from the
+ * outside, and publishes nothing back into this tree.
+ */
+export function App() {
+  const [build, setBuild] = useState<PreviewBuild>(selectedPreview())
 
   const Payments = useMemo(
     () => remoteComponent(build.remotes['payments-dash']!.module),
@@ -44,121 +33,47 @@ export function App({ recorder, repository }: AppProps) {
   )
   const Limits = useMemo(() => remoteComponent(build.remotes['limits-panel']!.module), [build])
 
-  // The instrumenter's runtime already holds every registered build's manifest,
-  // so the toolbar reads them from there rather than fetching them a second
-  // time - and it learns about a remote at the moment federation does.
-  const reloadManifests = useCallback(() => {
-    const builds = getProvenanceRuntime().getBuilds()
-    if (builds.length === 0) return
-    setManifest(
-      mergeProvenanceManifests(
-        ...builds.map((build) => adaptUiProvenanceManifest(build.manifest as never)),
-      ),
-    )
-    setBuildReport({
-      buildId: builds.map((build) => build.buildId).join('+'),
-      commit: builds[0]!.commitSha,
-      generatedAt: new Date().toISOString(),
-      artifacts: [
-        ...builds.map((build) => ({
-          kind: 'remote' as const,
-          name: `${build.applicationId} (${build.federationRole})`,
-          value: build.manifestUrl,
-        })),
-        ...Object.entries(builds[0]!.manifest.packageVersions ?? {}).map(([name, version]) => ({
-          kind: 'dependency' as const,
-          name,
-          value: String(version),
-        })),
-      ],
-    })
-  }, [])
-
+  // Switching the pinned build is an application concern; re-anchoring the open
+  // threads against it is the review layer's, over the bridge.
   useEffect(() => {
-    reloadManifests()
-    const unsubscribe = onRemoteLoaded(() => reloadManifests())
-    // Registration is asynchronous and driven by federation, not by React.
-    const timer = setInterval(reloadManifests, 1000)
-    return () => {
-      unsubscribe()
-      clearInterval(timer)
-    }
-  }, [reloadManifests])
-
-  // The Frame mounts the toolbar. The MFEs below know nothing about it.
-  useEffect(() => {
-    let disposed = false
-    void mountFeedbackToolbar({
-      previewRoot: '#preview',
-      actor: REVIEWER,
-      previewId: PREVIEW_ID,
-      lock: build.lock,
-      buildId: build.id,
-      label: build.label,
-      remotes: Object.fromEntries(
-        Object.entries(build.remotes).map(([name, pin]) => [name, { version: pin.version, entry: pin.entry }]),
-      ),
-      repository,
-      recorder,
-      captureCrops: true,
-      mode: 'dark',
-    }).then((handle) => {
-      if (disposed) handle.destroy()
-      else toolbarRef.current = handle
-    })
-    return () => {
-      disposed = true
-      toolbarRef.current?.destroy()
-      toolbarRef.current = null
-    }
-    // Mounted once: the toolbar is updated in place from here on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // A new pinned build, or a newly merged manifest, re-anchors the open set.
-  useEffect(() => {
-    toolbarRef.current?.update({
-      lock: build.lock,
-      buildId: build.id,
-      label: build.label,
-      manifest,
-      buildReport,
-      remotes: Object.fromEntries(
-        Object.entries(build.remotes).map(([name, pin]) => [name, { version: pin.version, entry: pin.entry }]),
-      ),
-    })
-  }, [build, manifest, buildReport])
+    selectPreview(build)
+  }, [build])
 
   return (
-    <div className="shell">
-      <div className="bar">
-        {/* Kept to the left: the feedback panel overlays the right edge. */}
-        <div className="build-switch">
-          {BUILDS.map((entry) => (
-            <Button
-              key={entry.id}
-              appearance={entry.id === build.id ? 'solid' : 'bordered'}
-              sentiment="accented"
-              onClick={() => setBuild(entry)}
-            >
-              {entry.label}
-            </Button>
-          ))}
-        </div>
-        <Text styleAs="label" color="secondary">
-          pinned preview · {PREVIEW_ID}
-        </Text>
-      </div>
-      <div className="stage">
-        <div className="preview" id="preview" ref={previewRef} data-theme="dark">
+    <BorderLayout className="shell">
+      <BorderItem position="north" className="bar" padding={1}>
+        <FlexLayout align="center" gap={2}>
+          {/* Kept to the left: the feedback panel overlays the right edge. */}
+          <ToggleButtonGroup
+            value={build.id}
+            onChange={(event) => {
+              const next = BUILDS.find((entry) => entry.id === event.currentTarget.value)
+              if (next) setBuild(next)
+            }}
+          >
+            {BUILDS.map((entry) => (
+              <ToggleButton key={entry.id} value={entry.id}>
+                {entry.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+          <Text styleAs="label" color="secondary" className="preview-id">
+            pinned preview · {PREVIEW_ID}
+          </Text>
+        </FlexLayout>
+      </BorderItem>
+
+      <BorderItem position="center" className="stage">
+        <div className="preview" id="preview" data-theme="dark">
           <Frame main={<Payments />} side={<Limits />} />
         </div>
-      </div>
+      </BorderItem>
+
       {ReviewLayerFixture ? (
         <Suspense fallback={null}>
           <ReviewLayerFixture />
         </Suspense>
       ) : null}
-    </div>
+    </BorderLayout>
   )
 }

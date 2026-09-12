@@ -1,5 +1,4 @@
-import { createContextLock } from '@adl/anchor-core'
-import type { ContextLock } from '@adl/anchor-core'
+import type { ContextLockInput } from '@adl/anchor-core'
 
 export interface RemotePin {
   version: string
@@ -11,7 +10,11 @@ export interface RemotePin {
 export interface PreviewBuild {
   id: string
   label: string
-  lock: ContextLock
+  /**
+   * The pinned inputs, not a built lock: hashing them needs anchor-core, which
+   * is review code. A production shell carries this file and none of that.
+   */
+  lock: ContextLockInput
   remotes: Record<string, RemotePin>
 }
 
@@ -39,7 +42,7 @@ export const BUILDS: PreviewBuild[] = [
   {
     id: 'a',
     label: 'A · payments-dash 2.4.1',
-    lock: createContextLock({
+    lock: {
       frame: '3.1.0',
       frameContracts: '3.1',
       designTokens: 'salt-1.45.0',
@@ -47,7 +50,7 @@ export const BUILDS: PreviewBuild[] = [
       lobConventions: 'markets-1.4',
       mfes: { 'payments-dash': '2.4.1', 'limits-panel': '1.2.0' },
       repo: { name: 'roughcompass/management-console', commit: 'a41c9ef' },
-    }),
+    },
     remotes: {
       'payments-dash': {
         version: '2.4.1',
@@ -60,7 +63,7 @@ export const BUILDS: PreviewBuild[] = [
   {
     id: 'b',
     label: 'B · payments-dash 2.5.0 (rebuilt)',
-    lock: createContextLock({
+    lock: {
       frame: '3.1.0',
       frameContracts: '3.1',
       designTokens: 'salt-1.46.0',
@@ -68,7 +71,7 @@ export const BUILDS: PreviewBuild[] = [
       lobConventions: 'markets-1.4',
       mfes: { 'payments-dash': '2.5.0', 'limits-panel': '1.2.0' },
       repo: { name: 'roughcompass/management-console', commit: '7d20b13' },
-    }),
+    },
     remotes: {
       'payments-dash': {
         version: '2.5.0',

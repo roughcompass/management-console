@@ -1,6 +1,7 @@
 import { relative, sep } from 'node:path'
+import { stripProvenanceSource } from '../compiler/transform.js'
 import { isUipError } from '../core/errors.js'
-import { getProject } from './state.js'
+import { getProject, isStripOnly } from './state.js'
 
 export interface LoaderContextLike {
   rootContext: string
@@ -16,8 +17,20 @@ const INSTRUMENTABLE = /\.(jsx|tsx)$/
  * yields equivalent identities in both bundlers.
  */
 export default function uiProvenanceLoader(this: LoaderContextLike, source: string): string {
+  if (!INSTRUMENTABLE.test(this.resourcePath)) return source
   const project = getProject(this.rootContext)
-  if (!project || !INSTRUMENTABLE.test(this.resourcePath)) return source
+
+  // Instrumentation off: the pass still runs, and removes rather than adds.
+  if (!project) {
+    if (!isStripOnly(this.rootContext)) return source
+    const stripped = stripProvenanceSource(source, this.resourcePath)
+    if (!stripped) return source
+    if (this.callback) {
+      this.callback(null, stripped.code, stripped.map)
+      return ''
+    }
+    return stripped.code
+  }
 
   const file = relative(this.rootContext, this.resourcePath).split(sep).join('/')
   if (file.startsWith('..')) return source

@@ -3,7 +3,7 @@ import { loadConfig } from '../compiler/config.js'
 import { assertNoProductionInstrumentation } from '../compiler/manifest.js'
 import { prepareProject } from '../compiler/project.js'
 import type { ProvenanceConfig } from '../core/types.js'
-import { clearProject, getProject, setProject } from './state.js'
+import { clearProject, getProject, setProject, setStripOnly } from './state.js'
 
 export const MANIFEST_FILE = 'ui-provenance-manifest.json'
 
@@ -56,7 +56,13 @@ export class UiProvenanceWebpackPlugin {
 
     // Same guard as the Vite adapter, at the same point in the build.
     assertNoProductionInstrumentation(mode, enabled && mode === 'production')
-    if (!enabled) return
+    if (!enabled) {
+      // The loader stays in the rule either way: with no project to inject
+      // from, it strips the authored keys so they never reach the artifact.
+      setStripOnly(root)
+      compiler.hooks.done.tap(name, () => clearProject(root))
+      return
+    }
 
     compiler.hooks.beforeCompile.tapPromise(name, async () => {
       const loaded = this.options.config

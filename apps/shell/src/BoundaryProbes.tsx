@@ -1,3 +1,4 @@
+import { StackLayout, Text } from '@salt-ds/core'
 import { useEffect, useRef } from 'react'
 
 /**
@@ -16,9 +17,12 @@ export function BoundaryProbes() {
   }, [])
 
   return (
-    <section className="boundaries" data-boundaries="">
+    <StackLayout as="section" gap={1} className="boundaries" data-boundaries="">
+      <Text styleAs="label" color="secondary">
+        instrumenter boundary probes
+      </Text>
       <div className="shadow-host" ref={shadowHost} />
       <iframe title="external report" className="external" src="about:blank" />
-    </section>
+    </StackLayout>
   )
 }

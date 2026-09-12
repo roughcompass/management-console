@@ -57,6 +57,9 @@ export function buildManifest(options: BuildManifestOptions): ProvenanceManifest
               name: element.library.name,
               version: options.packageVersions[element.library.name] ?? 'unknown',
               component: element.library.component,
+              alias: element.library.alias,
+              props: element.library.props,
+              context: element.library.context,
             }
           : undefined,
         instrumented: record?.instrumented ?? decision.inject,

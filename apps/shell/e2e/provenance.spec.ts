@@ -96,8 +96,8 @@ test('resolves a Salt component to the remote that produced it, not the host', a
 })
 
 test('tells repeated rows apart when the application supplies an instance key', async ({ page }) => {
-  const first = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .badge')
-  const second = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(2) .badge')
+  const first = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .status')
+  const second = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(2) .status')
 
   expect(first?.sourceId).toBe(second?.sourceId)
   expect(first?.instanceKey).not.toBe(second?.instanceKey)
@@ -154,10 +154,10 @@ test('reports an unsupported boundary for an iframe', async ({ page }) => {
 })
 
 test('re-resolves an anchor into a newly loaded remote build', async ({ page }) => {
-  const before = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .badge')
+  const before = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .status')
   expect(before?.confidence).toBe('exact')
 
-  await page.getByRole('button', { name: /payments-dash 2\.5\.0/ }).click()
+  await page.getByRole('radio', { name: /payments-dash 2\.5\.0/ }).click()
   await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible()
 
   const after = await page.evaluate(async (anchor) => {

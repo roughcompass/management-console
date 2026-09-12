@@ -1,16 +1,4 @@
 import type { CommentThread, NonVisualTarget } from '@adl/anchor-core'
-import {
-  Button,
-  Card,
-  Input,
-  Tab,
-  TabBar,
-  TabList,
-  TabPanel,
-  TabTrigger,
-  Tabs,
-  Text,
-} from '@salt-ds/core'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useFeedback } from './context.js'
@@ -26,7 +14,12 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'build', label: 'Build' },
 ]
 
-/** Salt's Card is not polymorphic, so list semantics live on the wrapper. */
+/**
+ * The toolbar is deliberately not built from the host's design system. It
+ * mounts over whatever the preview happens to be, reads design tokens when they
+ * are there and falls back when they are not, and adds no second root-level
+ * provider to the page.
+ */
 function RowCard({
   children,
   selected,
@@ -39,14 +32,12 @@ function RowCard({
   className?: string
 }): ReactNode {
   return (
-    <li>
-      <Card
-        className={className ? `adl-card ${className}` : 'adl-card'}
-        data-selected={selected}
-        onClick={onClick}
-      >
-        {children}
-      </Card>
+    <li
+      className={className ? `adl-card ${className}` : 'adl-card'}
+      data-selected={selected}
+      onClick={onClick}
+    >
+      {children}
     </li>
   )
 }
@@ -58,9 +49,9 @@ function RowComposer({ onSubmit }: { onSubmit: (body: string) => void }): ReactN
 
   if (!open) {
     return (
-      <Button appearance="transparent" onClick={() => setOpen(true)}>
+      <button type="button" className="adl-btn" onClick={() => setOpen(true)}>
         Comment
-      </Button>
+      </button>
     )
   }
   return (
@@ -74,22 +65,21 @@ function RowComposer({ onSubmit }: { onSubmit: (body: string) => void }): ReactN
         setOpen(false)
       }}
     >
-      <Input
+      <input
+        className="adl-input"
+        aria-label="comment"
+        autoFocus
         value={body}
         placeholder="What should change here?"
-        inputProps={{
-          'aria-label': 'comment',
-          autoFocus: true,
-          onChange: (event) => setBody(event.target.value),
-        }}
+        onChange={(event) => setBody(event.target.value)}
       />
       <div className="adl-row" style={{ marginTop: 6, justifyContent: 'flex-end' }}>
-        <Button appearance="transparent" type="button" onClick={() => setOpen(false)}>
+        <button type="button" className="adl-btn" onClick={() => setOpen(false)}>
           Cancel
-        </Button>
-        <Button appearance="solid" sentiment="accented" type="submit">
+        </button>
+        <button type="submit" className="adl-btn" data-variant="primary">
           Save
-        </Button>
+        </button>
       </div>
     </form>
   )
@@ -111,12 +101,11 @@ function ThreadCard({ thread, index }: { thread: CommentThread; index: number })
           <StatusChip status={thread.anchorStatus} />
           <LevelChip resolution={thread.resolution} />
         </div>
-        <Button
-          appearance="transparent"
+        <button type="button" className="adl-btn"
           onClick={() => setThreadStatus(thread.id, thread.status === 'open' ? 'resolved' : 'open')}
         >
           {thread.status === 'open' ? 'Resolve' : 'Reopen'}
-        </Button>
+        </button>
       </div>
 
       <div style={{ margin: '8px 0' }}>
@@ -126,19 +115,19 @@ function ThreadCard({ thread, index }: { thread: CommentThread; index: number })
       <ul className="adl-list">
         {thread.comments.map((comment) => (
           <li key={comment.id} style={{ marginBottom: 6 }}>
-            <Text styleAs="label" color="secondary">
+            <span className="adl-label">
               {comment.author.name} · {comment.author.role}
-            </Text>
-            <Text>{comment.body}</Text>
+            </span>
+            <div>{comment.body}</div>
           </li>
         ))}
       </ul>
 
       <StaleNotice entries={thread.staleAgainst} />
 
-      <Text styleAs="label" color="secondary">
+      <span className="adl-label">
         owner: {thread.owner.name}
-      </Text>
+      </span>
 
       <form
         style={{ marginTop: 6 }}
@@ -149,13 +138,12 @@ function ThreadCard({ thread, index }: { thread: CommentThread; index: number })
           setDraft('')
         }}
       >
-        <Input
+        <input
+          className="adl-input"
+          aria-label={`reply to comment ${index + 1}`}
           value={draft}
           placeholder="Reply"
-          inputProps={{
-            'aria-label': `reply to comment ${index + 1}`,
-            onChange: (event) => setDraft(event.target.value),
-          }}
+          onChange={(event) => setDraft(event.target.value)}
         />
       </form>
     </RowCard>
@@ -170,7 +158,7 @@ function CommentsTab(): ReactNode {
 
   if (threads.length === 0) {
     return (
-      <Text color="secondary">No feedback yet. Pick a node in the preview to start a thread.</Text>
+      <p className="adl-muted">No feedback yet. Pick a node in the preview to start a thread.</p>
     )
   }
 
@@ -202,7 +190,7 @@ function CommentsTab(): ReactNode {
 
 function NetworkTab(): ReactNode {
   const { recorder, commentOnTarget } = useFeedback()
-  if (recorder.network.length === 0) return <Text color="secondary">No requests recorded yet.</Text>
+  if (recorder.network.length === 0) return <p className="adl-muted">No requests recorded yet.</p>
 
   return (
     <ul className="adl-list">
@@ -238,7 +226,7 @@ function NetworkTab(): ReactNode {
 function RuntimeTab(): ReactNode {
   const { recorder, commentOnTarget } = useFeedback()
   if (recorder.events.length === 0) {
-    return <Text color="secondary">No runtime events recorded yet.</Text>
+    return <p className="adl-muted">No runtime events recorded yet.</p>
   }
 
   return (
@@ -349,16 +337,15 @@ export function FeedbackPanel(): ReactNode {
     <aside className="adl-root adl-panel" aria-label="Preview feedback">
       <header className="adl-panel-header">
         <div className="adl-row-between">
-          <Text styleAs="h4">Feedback</Text>
+          <strong>Feedback</strong>
           <div className="adl-row">
             <span className="adl-mono">lock {lock.id.slice(0, 8)}</span>
-            <Button
-              appearance="transparent"
+            <button type="button" className="adl-btn"
               aria-label="Close feedback panel"
               onClick={() => setPanelOpen(false)}
             >
               ✕
-            </Button>
+            </button>
           </div>
         </div>
         <div className="adl-row" style={{ marginTop: 10, gap: 18 }}>
@@ -369,31 +356,26 @@ export function FeedbackPanel(): ReactNode {
         </div>
       </header>
 
-      <Tabs value={tab} onChange={(_event, value) => setTab(value as TabId)}>
-        <TabBar divider inset>
-          <TabList appearance="transparent">
-            {TABS.map((entry) => (
-              <Tab key={entry.id} value={entry.id}>
-                <TabTrigger>{entry.label}</TabTrigger>
-              </Tab>
-            ))}
-          </TabList>
-        </TabBar>
-        <div className="adl-panel-body">
-          <TabPanel value="comments">
-            <CommentsTab />
-          </TabPanel>
-          <TabPanel value="network">
-            <NetworkTab />
-          </TabPanel>
-          <TabPanel value="runtime">
-            <RuntimeTab />
-          </TabPanel>
-          <TabPanel value="build">
-            <BuildTab />
-          </TabPanel>
-        </div>
-      </Tabs>
+      <nav className="adl-tabs" role="tablist" aria-label="Feedback views">
+        {TABS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            className="adl-tab"
+            aria-selected={tab === entry.id}
+            onClick={() => setTab(entry.id)}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </nav>
+      <div className="adl-panel-body" role="tabpanel">
+        {tab === 'comments' ? <CommentsTab /> : null}
+        {tab === 'network' ? <NetworkTab /> : null}
+        {tab === 'runtime' ? <RuntimeTab /> : null}
+        {tab === 'build' ? <BuildTab /> : null}
+      </div>
     </aside>
   )
 }
@@ -409,22 +391,23 @@ export function FeedbackDock(): ReactNode {
 
   return (
     <div className="adl-root adl-dock" aria-label="Feedback toolbar">
-      <Button
-        appearance={picking ? 'solid' : 'bordered'}
-        sentiment="accented"
+      <button
+        type="button"
+        className="adl-btn"
+        data-active={picking}
         onClick={() => setPicking(!picking)}
       >
         {picking ? 'Picking… (esc)' : 'Comment on a node'}
-      </Button>
-      <Button appearance="transparent" onClick={() => refresh({ record: false })}>
+      </button>
+      <button type="button" className="adl-btn" onClick={() => refresh({ record: false })}>
         Re-anchor
-      </Button>
+      </button>
       <span className="adl-chip" data-status={metrics.orphanRate > 0 ? 'orphaned' : 'resolved'}>
         {percent(metrics.orphanRate)} orphaned
       </span>
-      <Button appearance="bordered" onClick={() => setPanelOpen(!panelOpen)}>
+      <button type="button" className="adl-btn" onClick={() => setPanelOpen(!panelOpen)}>
         {panelOpen ? 'Hide' : 'Show'} feedback ({open})
-      </Button>
+      </button>
     </div>
   )
 }

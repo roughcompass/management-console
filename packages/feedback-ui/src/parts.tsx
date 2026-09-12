@@ -5,19 +5,12 @@ import type {
   AnchorStatus,
   ContextLockDiffEntry,
 } from '@adl/anchor-core'
-import { StatusIndicator, Text } from '@salt-ds/core'
 import type { ReactNode } from 'react'
-
-const SALT_STATUS = {
-  resolved: 'success',
-  degraded: 'warning',
-  orphaned: 'error',
-} as const
 
 export function StatusChip({ status }: { status: AnchorStatus }): ReactNode {
   return (
     <span className="adl-chip" data-status={status}>
-      <StatusIndicator status={SALT_STATUS[status]} size={1} />
+      <i className="adl-dot" aria-hidden="true" />
       {status}
     </span>
   )
@@ -130,7 +123,7 @@ export function StaleNotice({ entries }: { entries?: ContextLockDiffEntry[] }): 
 export function Metric({ value, label }: { value: string; label: string }): ReactNode {
   return (
     <div className="adl-metric">
-      <Text styleAs="h3">{value}</Text>
+      <span className="adl-metric-value">{value}</span>
       <span className="adl-metric-label">{label}</span>
     </div>
   )
