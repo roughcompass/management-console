@@ -112,6 +112,36 @@ describe('feedback store', () => {
     expect(store.meter.builds()).toEqual(['build-b'])
   })
 
+  it('withdraws a comment entirely, and stops counting it', () => {
+    const { store, at } = seed()
+    const kept = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'keep this one' })
+    const withdrawn = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'wrong element' })
+
+    // The heading is gone in v2, so before the delete one of the two is an orphan.
+    store.reanchor(rebuild(), { buildId: 'build-b' })
+    expect(store.meter.snapshot('build-b')).toMatchObject({ total: 2, orphaned: 1 })
+
+    store.removeThread(withdrawn.id)
+    expect(store.threads().map((thread) => thread.id)).toEqual([kept.id])
+    // A rate that still counted it would be reporting on feedback nobody has.
+    expect(store.meter.snapshot('build-b')).toMatchObject({ total: 1, orphaned: 0, orphanRate: 0 })
+  })
+
+  it('removes a reply without removing the comment it is on', () => {
+    const { store, at } = seed()
+    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'error status, not caution' })
+    const reply = store.addComment(thread.id, engineer, 'that is an L2 token change')
+
+    store.removeComment(thread.id, reply.id)
+    expect(thread.comments.map((comment) => comment.body)).toEqual(['error status, not caution'])
+    expect(store.thread(thread.id)).toBeDefined()
+
+    // The opening comment is the thread; there is no anchored comment without it.
+    expect(() => store.removeComment(thread.id, thread.comments[0]!.id)).toThrow(
+      /remove the thread instead/,
+    )
+  })
+
   it('notifies subscribers so a preview can react without polling', () => {
     const { store, at } = seed()
     const events: string[] = []

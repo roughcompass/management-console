@@ -54,7 +54,13 @@ around the anchoring machinery underneath them:
    wants to use it rather than talk about it. Feedback wider than one thing —
    spacing, form patterns, wording — goes in as a comment on the whole page.
 2. **Talk about it.** Every comment takes replies, and is marked done when it
-   is dealt with. Done comments are never sent.
+   is dealt with. Done comments are never sent. A comment that should not
+   exist at all — the wrong element, a duplicate, a change of mind — is
+   deleted instead: only by whoever wrote it, and only after confirming,
+   because there is no undo and nowhere for it to go. Deleting the opening
+   comment deletes the thread and its pin; deleting a reply leaves the comment
+   standing. A deleted comment also stops counting towards the orphan rate,
+   which would otherwise report on feedback nobody has.
 3. **Ask for the next version.** **Request changes** shows exactly what will go
    and lets her hold anything back, then hands the host a `ChangeRequest`. Her
    comments follow the page into the version that comes back, each one saying

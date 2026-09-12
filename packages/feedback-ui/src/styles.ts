@@ -174,6 +174,17 @@ export const feedbackStyles = `
   color: var(--salt-content-primary-foreground-inverse, #fff);
 }
 .adl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.adl-btn[data-variant='danger'] {
+  background: var(--salt-status-error-background, #b3403a);
+  border-color: var(--salt-status-error-background, #b3403a);
+  color: var(--salt-content-primary-foreground-inverse, #fff);
+}
+.adl-quiet {
+  border-color: transparent;
+  color: var(--salt-content-secondary-foreground, #9aa3b5);
+  padding: 4px 6px;
+}
+.adl-quiet:hover { color: var(--salt-content-primary-foreground, #e8eaf0); }
 .adl-input {
   width: 100%;
   padding: 5px 8px;

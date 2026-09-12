@@ -106,6 +106,57 @@ function RowComposer({ onSubmit }: { onSubmit: (body: string) => void }): ReactN
   )
 }
 
+/**
+ * Deleting feedback cannot be undone and there is nowhere for it to go, so it
+ * asks once rather than offering an undo that would have to outlive the page.
+ */
+function DeleteButton({ label, onConfirm }: { label: string; onConfirm: () => void }): ReactNode {
+  const [armed, setArmed] = useState(false)
+  const stop = (event: { stopPropagation(): void }) => event.stopPropagation()
+
+  if (!armed) {
+    return (
+      <button
+        type="button"
+        className="adl-btn adl-quiet"
+        aria-label={label}
+        onClick={(event) => {
+          stop(event)
+          setArmed(true)
+        }}
+      >
+        Delete
+      </button>
+    )
+  }
+  return (
+    <span className="adl-row" style={{ gap: 4 }}>
+      <button
+        type="button"
+        className="adl-btn"
+        data-variant="danger"
+        aria-label={`${label}, confirm`}
+        onClick={(event) => {
+          stop(event)
+          onConfirm()
+        }}
+      >
+        Delete for good
+      </button>
+      <button
+        type="button"
+        className="adl-btn adl-quiet"
+        onClick={(event) => {
+          stop(event)
+          setArmed(false)
+        }}
+      >
+        Cancel
+      </button>
+    </span>
+  )
+}
+
 /** Shown in full with Technical details on; one click away without. */
 function Disclosure({ children }: { children: ReactNode }): ReactNode {
   const { details } = useFeedback()
@@ -119,7 +170,16 @@ function Disclosure({ children }: { children: ReactNode }): ReactNode {
 }
 
 function CommentCard({ thread, number }: { thread: CommentThread; number: number }): ReactNode {
-  const { reply, setThreadStatus, selectThread, selectedThreadId, details } = useFeedback()
+  const {
+    reply,
+    setThreadStatus,
+    selectThread,
+    selectedThreadId,
+    details,
+    canDelete,
+    deleteThread,
+    deleteReply,
+  } = useFeedback()
   const [draft, setDraft] = useState('')
   const open = thread.status === 'open'
   const trouble = plainStatus(thread.anchorStatus)
@@ -145,16 +205,24 @@ function CommentCard({ thread, number }: { thread: CommentThread; number: number
           ) : null}
           {!open ? <span className="adl-chip">Done</span> : null}
         </div>
-        <button
-          type="button"
-          className="adl-btn"
-          onClick={(event) => {
-            event.stopPropagation()
-            setThreadStatus(thread.id, open ? 'resolved' : 'open')
-          }}
-        >
-          {open ? 'Mark done' : 'Reopen'}
-        </button>
+        <div className="adl-row" style={{ gap: 4 }}>
+          {first && canDelete(first.author.id) ? (
+            <DeleteButton
+              label={`delete comment ${number}`}
+              onConfirm={() => deleteThread(thread.id)}
+            />
+          ) : null}
+          <button
+            type="button"
+            className="adl-btn"
+            onClick={(event) => {
+              event.stopPropagation()
+              setThreadStatus(thread.id, open ? 'resolved' : 'open')
+            }}
+          >
+            {open ? 'Mark done' : 'Reopen'}
+          </button>
+        </div>
       </div>
 
       <div className="adl-thread-title">{describeAnchor(thread.anchor)}</div>
@@ -172,11 +240,19 @@ function CommentCard({ thread, number }: { thread: CommentThread; number: number
 
       {replies.length > 0 ? (
         <ul className="adl-list adl-replies">
-          {replies.map((comment) => (
+          {replies.map((comment, index) => (
             <li key={comment.id} className="adl-comment">
-              <span className="adl-label">
-                {comment.author.name} · {when(comment.createdAt)}
-              </span>
+              <div className="adl-row-between">
+                <span className="adl-label">
+                  {comment.author.name} · {when(comment.createdAt)}
+                </span>
+                {canDelete(comment.author.id) ? (
+                  <DeleteButton
+                    label={`delete reply ${index + 1} on comment ${number}`}
+                    onConfirm={() => deleteReply(thread.id, comment.id)}
+                  />
+                ) : null}
+              </div>
               <div>{comment.body}</div>
             </li>
           ))}

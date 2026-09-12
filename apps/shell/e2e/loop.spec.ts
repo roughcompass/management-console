@@ -111,6 +111,27 @@ test('keeps and reverts versions from the Versions view', async ({ page }) => {
   await expect(viewing.getByText(/Approved by Dana Whitfield/)).toBeVisible()
 })
 
+test('deletes a comment, and it stays gone', async ({ page }) => {
+  await comment(page, FAILED_STATUS, 'actually this one is fine')
+  await openPanel(page)
+  await expect(page.locator('.adl-pin')).toHaveCount(1)
+
+  // Two clicks, because there is no undo for it.
+  await page.getByLabel('delete comment 1').click()
+  await expect(page.locator(THREAD)).toHaveCount(1)
+  await page.getByLabel('delete comment 1, confirm').click()
+
+  await expect(page.locator('.adl-pin')).toHaveCount(0)
+  await expect(page.locator(THREAD)).toHaveCount(0)
+
+  // Withdrawn, not hidden: it does not come back with the page.
+  await closePanel(page)
+  await page.reload()
+  await page.waitForSelector('[data-mfe="payments-dash"] tbody tr')
+  await openPanel(page)
+  await expect(page.locator(THREAD)).toHaveCount(0)
+})
+
 test('captures feedback on things that are not on screen', async ({ page }) => {
   await openPanel(page)
   await page.getByRole('tab', { name: 'Network' }).click()

@@ -18,6 +18,7 @@ import type { ChangeRequest } from './change-request.js'
 import type { ReviewVersion } from './versions.js'
 
 const designer: Actor = { id: 'u-dw', name: 'Dana Whitfield', role: 'design' }
+const engineer: Actor = { id: 'u-mo', name: 'Miles Okonjo', role: 'engineering' }
 
 const V1: ReviewVersion = { id: 'build-a', label: 'Version 1', createdAt: lockV1.createdAt }
 const V2: ReviewVersion = { id: 'build-b', label: 'Version 2', createdAt: lockV2.createdAt }
@@ -44,6 +45,7 @@ interface HarnessProps {
   buildId: string
   selector: string
   body: string
+  actor?: Actor
   versions?: ReviewVersion[]
   onRequestChanges?: (request: ChangeRequest) => void
   onViewVersion?: (id: string) => void
@@ -54,7 +56,7 @@ function Harness(props: HarnessProps) {
   const previewRef = useRef<HTMLDivElement>(null)
   return (
     <FeedbackProvider
-      actor={designer}
+      actor={props.actor ?? designer}
       previewId="pr-1042"
       lock={props.lock}
       manifest={props.manifest}
@@ -288,6 +290,66 @@ describe("the reviewer's round trip", () => {
     expect(onApprove.mock.calls[0]![0].label).toBe('Version 2')
     expect(screen.getByText('Ready to deploy')).toBeDefined()
     expect(screen.getByText(/Approved by Dana Whitfield/)).toBeDefined()
+    restore()
+  })
+
+  it('lets her withdraw her own comment, but only hers and only on purpose', () => {
+    const restore = stubRects()
+    const props = {
+      html: htmlV1(),
+      lock: lockV1,
+      manifest: manifestV1,
+      buildId: 'build-a',
+      selector: `[data-de-provenance-id="${ID.badge}"]`,
+      body: 'a failed settlement is an error, not a caution',
+    }
+    const view = render(<Harness {...props} />)
+    fireEvent.click(screen.getByText('leave feedback'))
+    fireEvent.click(screen.getByText('leave feedback'))
+    expect(document.querySelectorAll('.adl-pin')).toHaveLength(2)
+
+    // One click arms it; the comment is still there until she says so again.
+    fireEvent.click(screen.getByLabelText('delete comment 1'))
+    expect(screen.getAllByText(props.body)).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(document.querySelectorAll('.adl-pin')).toHaveLength(2)
+
+    fireEvent.click(screen.getByLabelText('delete comment 1'))
+    fireEvent.click(screen.getByLabelText('delete comment 1, confirm'))
+    // Gone from the list and off the page, and the one left is renumbered.
+    expect(document.querySelectorAll('.adl-pin')).toHaveLength(1)
+    expect(screen.getByText('1 open comment')).toBeDefined()
+    expect(document.querySelector('.adl-pin')?.textContent).toBe('1')
+
+    // Someone else's feedback is not hers to withdraw.
+    view.rerender(<Harness {...props} actor={engineer} />)
+    expect(screen.queryByLabelText('delete comment 1')).toBeNull()
+    restore()
+  })
+
+  it('removes a reply without removing the comment it is on', () => {
+    const restore = stubRects()
+    render(
+      <Harness
+        html={htmlV1()}
+        lock={lockV1}
+        manifest={manifestV1}
+        buildId="build-a"
+        selector={`[data-de-provenance-id="${ID.badge}"]`}
+        body="a failed settlement is an error, not a caution"
+      />,
+    )
+    fireEvent.click(screen.getByText('leave feedback'))
+    const reply = screen.getByLabelText('reply to comment 1')
+    fireEvent.change(reply, { target: { value: 'agreed, error sentiment' } })
+    fireEvent.submit(reply)
+    expect(screen.getByText('agreed, error sentiment')).toBeDefined()
+
+    fireEvent.click(screen.getByLabelText('delete reply 1 on comment 1'))
+    fireEvent.click(screen.getByLabelText('delete reply 1 on comment 1, confirm'))
+    expect(screen.queryByText('agreed, error sentiment')).toBeNull()
+    expect(screen.getByText('a failed settlement is an error, not a caution')).toBeDefined()
+    expect(document.querySelectorAll('.adl-pin')).toHaveLength(1)
     restore()
   })
 

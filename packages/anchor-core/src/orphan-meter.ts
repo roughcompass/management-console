@@ -104,6 +104,11 @@ export class OrphanMeter {
     }
   }
 
+  /** A deleted comment stops counting: it is not an orphan, it is not there. */
+  forget(threadId: string): void {
+    this.samples = this.samples.filter((sample) => sample.threadId !== threadId)
+  }
+
   builds(): string[] {
     return [...new Set(this.samples.map((s) => s.buildId))]
   }

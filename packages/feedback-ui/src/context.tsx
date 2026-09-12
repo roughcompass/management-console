@@ -83,6 +83,10 @@ export interface FeedbackContextValue {
   commentGeneral(topic: string, body: string): CommentThread
   reply(threadId: string, body: string): void
   setThreadStatus(threadId: string, status: CommentThread['status']): void
+  /** Feedback belongs to whoever wrote it, so only they can withdraw it. */
+  canDelete(authorId: string): boolean
+  deleteThread(threadId: string): void
+  deleteReply(threadId: string, commentId: string): void
 
   // The versions of the page, and where the reviewer is in them.
   versions: ReviewVersion[]
@@ -347,6 +351,31 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [store],
   )
 
+  const canDelete = useCallback((authorId: string) => authorId === actor.id, [actor.id])
+
+  const deleteThread = useCallback(
+    (threadId: string) => {
+      store.removeThread(threadId)
+      elementsRef.current.delete(threadId)
+      selectThread((current) => (current === threadId ? null : current))
+      // It was only ever held back from a request it can no longer be in.
+      setExcluded((prev) => {
+        if (!prev.has(threadId)) return prev
+        const next = new Set(prev)
+        next.delete(threadId)
+        return next
+      })
+    },
+    [store],
+  )
+
+  const deleteReply = useCallback(
+    (threadId: string, commentId: string) => {
+      store.removeComment(threadId, commentId)
+    },
+    [store],
+  )
+
   const setDetails = useCallback((value: boolean) => {
     setDetailsState(value)
     try {
@@ -473,6 +502,9 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       commentGeneral,
       reply,
       setThreadStatus,
+      canDelete,
+      deleteThread,
+      deleteReply,
       versions,
       currentVersion,
       onLatestVersion,
@@ -493,8 +525,11 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       captureCrop,
       commentGeneral,
       commentOnElement,
+      canDelete,
       commentOnTarget,
       currentVersion,
+      deleteReply,
+      deleteThread,
       details,
       draftRequest,
       excludedThreadIds,

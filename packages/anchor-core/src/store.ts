@@ -16,7 +16,9 @@ import type {
 export type FeedbackEvent =
   | { type: 'thread-created'; thread: CommentThread }
   | { type: 'thread-updated'; thread: CommentThread }
+  | { type: 'thread-removed'; thread: CommentThread }
   | { type: 'comment-added'; thread: CommentThread; comment: Comment }
+  | { type: 'comment-removed'; thread: CommentThread; comment: Comment }
   | { type: 'reanchored'; buildId: string; snapshot: OrphanSnapshot }
 
 export type FeedbackListener = (event: FeedbackEvent) => void
@@ -128,6 +130,36 @@ export class FeedbackStore {
     thread.comments = [...thread.comments, comment]
     this.emit({ type: 'comment-added', thread, comment })
     return comment
+  }
+
+  /**
+   * Withdraw a comment entirely: the wrong element, a duplicate, a change of
+   * mind. Distinct from resolving it, which keeps the record of a decision.
+   * Its orphan samples go with it, so a rate is never carrying a comment that
+   * is not there any more.
+   */
+  removeThread(threadId: string): CommentThread {
+    const thread = this.require(threadId)
+    this.threadMap.delete(threadId)
+    this.meter.forget(threadId)
+    this.emit({ type: 'thread-removed', thread })
+    return thread
+  }
+
+  /**
+   * Replies only. A thread's opening comment is the thread - there is no
+   * anchored comment left once it goes - so removing that is removeThread.
+   */
+  removeComment(threadId: string, commentId: string): CommentThread {
+    const thread = this.require(threadId)
+    if (thread.comments[0]?.id === commentId) {
+      throw new Error('the opening comment is the thread: remove the thread instead')
+    }
+    const comment = thread.comments.find((entry) => entry.id === commentId)
+    if (!comment) return thread
+    thread.comments = thread.comments.filter((entry) => entry.id !== commentId)
+    this.emit({ type: 'comment-removed', thread, comment })
+    return thread
   }
 
   setStatus(threadId: string, status: CommentThread['status']): CommentThread {
