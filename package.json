@@ -4,12 +4,12 @@
   "private": true,
   "description": "Agentic UI Delivery Loop - Phase 1: anchored feedback on pinned previews",
   "scripts": {
-    "build": "tsc -b packages/anchor-core packages/provenance packages/feedback-ui",
-    "typecheck": "tsc -b --noEmit packages/anchor-core packages/provenance packages/feedback-ui && tsc -p apps/preview-demo --noEmit",
+    "build": "tsc -b packages/anchor-core packages/provenance packages/feedback-store packages/feedback-ui",
+    "typecheck": "tsc -b --noEmit packages/anchor-core packages/provenance packages/feedback-store packages/feedback-ui && tsc -p apps/shell --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "pnpm --filter @adl/preview-demo dev",
-    "test:e2e": "pnpm --filter @adl/preview-demo e2e"
+    "demo": "pnpm --parallel --filter \"./apps/*\" dev",
+    "test:e2e": "pnpm --filter @adl/shell e2e"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

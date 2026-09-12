@@ -9,6 +9,7 @@ export default defineConfig({
       '@adl/anchor-core': r('./packages/anchor-core/src/index.ts'),
       '@adl/provenance': r('./packages/provenance/src/index.ts'),
       '@adl/feedback-ui': r('./packages/feedback-ui/src/index.ts'),
+      '@adl/feedback-store': r('./packages/feedback-store/src/index.ts'),
     },
   },
   test: {

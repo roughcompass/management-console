@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -20,9 +24,18 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@adl/anchor-core": ["packages/anchor-core/src/index.ts"],
-      "@adl/provenance": ["packages/provenance/src/index.ts"],
-      "@adl/feedback-ui": ["packages/feedback-ui/src/index.ts"]
+      "@adl/anchor-core": [
+        "packages/anchor-core/src/index.ts"
+      ],
+      "@adl/provenance": [
+        "packages/provenance/src/index.ts"
+      ],
+      "@adl/feedback-ui": [
+        "packages/feedback-ui/src/index.ts"
+      ],
+      "@adl/feedback-store": [
+        "packages/feedback-store/src/index.ts"
+      ]
     }
   }
 }
