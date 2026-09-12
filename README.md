@@ -1,43 +1,85 @@
 # Agentic UI Delivery Loop — Phase 1
 
-Anchored feedback on pinned previews.
+An embeddable preview-review toolbar, and the anchoring SDK behind it.
 
-Phase 1 replaces screenshot-and-email. A reviewer opens a running preview, clicks
-the thing that is wrong, and the comment stays attached to that thing across
-rebuilds. No agent generates anything yet. The point is to prove the anchor model
-holds before anything expensive is built on top of it.
+Phase 1 is not a component library and not an application. It is a toolbar the
+Frame mounts into a pinned preview — closer to the Vercel toolbar than to a
+design system — that lets a reviewer attach persistent comments to UI elements
+inside federated MFEs, and keeps those comments attached as the preview is
+rebuilt.
+
+It does not generate or modify code. It proves that feedback can be captured,
+preserved across preview versions, and tied reliably to the component that
+produced the pixel.
 
 The metric that decides whether this works is the **orphan rate**: the share of
-comments that lose their anchor between builds. It is computed on every
-re-anchor pass and shown in the panel, not reconstructed from logs later.
+comments that lose their anchor between builds. It is computed on every metered
+re-anchor pass and shown in the toolbar, not reconstructed from logs later.
 
 ## What is here
 
 | Package | What it owns |
 |---|---|
-| `@adl/anchor-core` | The four primitives: anchor, context lock, comment thread, and the re-anchor chain. Framework-agnostic, no dependencies. |
-| `@adl/provenance` | The build-time half of the provenance contract: a babel plugin that marks host elements, and a bundler plugin that publishes the manifest, the context lock and the build report. |
-| `@adl/feedback-ui` | React: click-to-anchor overlay, pins, thread panel, and the instrumented preview panel for network, runtime-event and build-artifact anchors. |
-| `apps/preview-demo` | A pinned preview — one Frame, two MFEs — with a second build you can switch to, so the re-anchor behaviour is visible rather than asserted. |
+| `@adl/anchor-core` | The anchoring SDK: anchors, context locks, the re-anchor chain, crop capture, orphan metering. Framework-agnostic, no dependencies. |
+| `@adl/provenance` | Build-time instrumentation: a babel plugin that marks host elements, and a bundler plugin that publishes each participant's manifest, context lock and build report. |
+| `@adl/feedback-store` | The datastore model — comments, threads, anchors, users, preview versions — behind one repository interface, with in-memory and localStorage implementations. |
+| `@adl/feedback-ui` | The toolbar: `mountFeedbackToolbar()`, element picking, comment pins, and the panel for creating, viewing, resolving and replying to feedback. Built with Salt. |
+
+| App | What it is |
+|---|---|
+| `apps/shell` | The Frame. A Module Federation 2 host that loads the remotes, pins a preview version, and mounts the toolbar. |
+| `apps/payments-mfe` | A federated remote, exposing `PaymentsDash` at two versions so a rebuild can be watched happening. |
+| `apps/limits-mfe` | A second federated remote, so paths and manifests have to survive more than one origin. |
+
+Shell and MFEs are built with [Salt](https://www.saltdesignsystem.com/), and the
+toolbar is too — its chrome follows whatever Salt theme the Frame is running.
 
 ## Quickstart
 
 ```bash
 pnpm install
-pnpm build          # the demo consumes the built packages
-pnpm test           # 43 unit and integration tests
-pnpm demo           # http://localhost:5273
+pnpm build          # the apps consume the built packages
+pnpm test           # 57 unit and integration tests
+pnpm demo           # shell on :5273, remotes on :5274 and :5275
 ```
 
-In the demo: press **Comment on a node**, click something, write a comment. Then
-press **B · payments-dash 2.5.0 (rebuilt)**. Build B is the same MFE after a
-refactor — components moved to a new file, markup restructured, the summary card
-deleted, the version bumped. Watch what each comment does.
+In the preview: press **Comment on a node**, click something inside an MFE,
+write a comment. Then press **B · payments-dash 2.5.0 (rebuilt)**. Build B loads
+a different federated module: the same components after a refactor — new file,
+restructured markup, the summary card deleted, the version bumped. Watch what
+each comment does.
 
-`pnpm test:e2e` runs the same walkthrough in a real browser (requires
-`npx playwright install chromium`, or `PW_CHROMIUM_PATH` pointing at a Chromium
-binary). jsdom reports every box as zero, so the visual level of the chain can
-only be exercised here.
+`pnpm test:e2e` runs that walkthrough in a real browser across the real
+federation boundary (needs `npx playwright install chromium`, or
+`PW_CHROMIUM_PATH` pointing at a Chromium binary). It starts the three dev
+servers itself.
+
+## Mounting it
+
+The Frame mounts the toolbar. The MFEs below it are not modified, do not import
+it, and do not know it is there — which is what makes it work over an MFE the
+reviewer's team does not own.
+
+```ts
+import { mountFeedbackToolbar } from '@adl/feedback-ui'
+import { createLocalStorageRepository } from '@adl/feedback-store'
+
+const toolbar = await mountFeedbackToolbar({
+  previewRoot: '#preview',
+  previewId: 'pr-1042-payments-dash',
+  actor: currentReviewer,
+  lock: previewBuild.lock,
+  buildId: previewBuild.id,
+  manifest,                              // merged from every remote
+  repository: createLocalStorageRepository(),
+  captureCrops: true,
+})
+
+// A new pinned version: re-anchors the open set, records the version.
+toolbar.update({ lock: next.lock, buildId: next.id, manifest })
+```
+
+See [docs/embedding.md](docs/embedding.md).
 
 ## The five-level anchor
 
@@ -47,7 +89,8 @@ component tree, data, runtime state, theme and viewport. It will not exist in th
 same form after the next rebuild.
 
 So an anchor is stored as a resolution chain, most specific first, and every
-level is captured at once:
+level is captured at once — along with a screenshot crop, which is never used
+for matching and exists so an orphaned comment can still show what it was about.
 
 | Level | Survives | Confidence ceiling |
 |---|---|---|
@@ -57,26 +100,33 @@ level is captured at once:
 | Text | layout changes | 0.65 |
 | Visual box | nothing much; last resort, same theme and viewport only | 0.60 |
 
-After every rebuild the chain is walked in order and the first level that clears
-its floor wins. A thread that matches below the level it was captured at is
-marked `degraded` rather than silently accepted, and one that matches nowhere is
-`orphaned` with the full list of what was tried and why each level failed.
+A thread that matches below the level it was captured at is marked `degraded`
+rather than silently accepted, and one that matches nowhere is `orphaned` with
+the full list of what was tried and why each level failed.
 
 See [docs/anchor-resolution.md](docs/anchor-resolution.md).
 
 ## The provenance contract
 
-Level 1 needs a build-time instrumentation step in every participating MFE. It is
-a platform contract change, not an application change, and it is additive: an MFE
-adds the babel plugin and nothing else about it changes. An MFE that has not
-adopted it still receives feedback — the chain simply starts at the semantic
-level and confidence is lower.
+Level 1 needs a build-time step in every participating MFE. It is a platform
+contract change, not an application change, and it is additive: an MFE adds the
+babel plugin and nothing else about it changes. Under federation each remote is
+built separately and publishes its own manifest, scoped by MFE name; the shell
+merges them.
+
+An MFE that has not adopted it still receives feedback — the chain starts at the
+semantic level and confidence is lower.
 
 See [docs/provenance-contract.md](docs/provenance-contract.md).
 
 ## Deliberately not built
 
-Phase 1 stops where it stops. Not here, and not stubbed:
+**The API is not shipped.** `@adl/feedback-store` defines the model and the
+repository interface, and ships two local implementations. The service that
+implements the same interface over HTTP is the next piece of work, and nothing
+above the interface knows which implementation it has.
+
+Also not here, and not stubbed:
 
 - Change intent, and any agent that writes code (phase 2).
 - Revision sets, conflict detection, ordering (phase 3).

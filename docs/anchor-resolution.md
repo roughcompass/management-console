@@ -18,9 +18,17 @@ the best one:
   semantic:   { segments: [...] },      // Frame > Zone > MFE > components > tag
   tokens:     [{ token, property, value }],
   text:       { text, normalized, ordinal, tag },
-  visual:     { rect, viewport, theme, devicePixelRatio }
+  visual:     { rect, viewport, theme, devicePixelRatio, crop }
 }
 ```
+
+The `crop` is a small PNG of the node, rendered in the browser through an SVG
+foreignObject. Nothing in the chain reads it. It exists so that a comment whose
+anchor is in trouble can still show the reviewer what it was about — an orphan
+nobody recognises is an orphan nobody triages. It is best-effort by design:
+cross-origin images taint the canvas and web fonts do not load inside the SVG,
+and both cases return no crop rather than throwing. Losing it must never cost
+the comment.
 
 The specific levels make re-anchoring accurate. The loose levels are what stop a
 comment from orphaning when the specific ones are refactored away. Capturing them
@@ -49,7 +57,7 @@ The outcome is one of three states:
   and the reason each failed, because an orphan nobody can triage is an orphan
   nobody fixes.
 
-## Three rules that cost matches on purpose
+## Four rules that cost matches on purpose
 
 A wrong anchor is worse than a flagged orphan. A designer who finds their comment
 pointing at the wrong component stops trusting every other comment on the page.
@@ -60,6 +68,17 @@ pointing at the wrong component stops trusting every other comment on the page.
    happens to occupy that region now. The tag is the one cheap constraint left.
 3. **The visual level refuses a different theme or a viewport more than 5% off.**
    Where a node sat on a 1440px dark render says nothing about a 768px light one.
+4. **A semantic match that contradicts the node's own identity is discounted.**
+   Two plain divs inside one component share a path exactly; what tells them
+   apart is what each carries itself. If the anchor captured text or token
+   bindings and the candidate has neither, the score is multiplied by 0.6 — so a
+   full-path match lands as `degraded` with the contradiction named, and a
+   partial one stops clearing the floor at all.
+
+Candidates at the semantic level are selected by tag, not by the provenance
+index. A node rendered inside a design-system component has no provenance of its
+own but still sits on a path through the application component that placed it;
+filtering by the index would make every such node unaddressable.
 
 ## Orphan rate is an output, not a report
 
@@ -75,6 +94,14 @@ and returns the snapshot for that build:
   meanConfidence: 0.6
 }
 ```
+
+Exactly one pass per build is metered. A federated preview does not arrive at
+once — remotes resolve lazily, data lands after them — so the toolbar waits for
+the preview DOM to go quiet before the metered pass. Passes triggered by ordinary
+DOM churn afterwards still re-resolve anchors, keeping pins attached as content
+moves, but pass `record: false` and are not counted. Without that split the
+orphan rate reports whatever the page looked like mid-render, which on a
+federated preview is "everything is missing".
 
 `byLevel` is the interesting column over time. It says how much of the feedback
 each level is actually carrying, which is the argument for or against the cost of
