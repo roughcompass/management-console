@@ -266,6 +266,14 @@ export interface Comment {
   createdAt: string
 }
 
+/**
+ * What has been decided about a piece of feedback. Collecting it and acting on
+ * it are separate: `open` is said but undecided, `accepted` is agreed and will
+ * go into the next version, `rejected` is declined, and `addressed` is what an
+ * accepted comment becomes once a version has been created from it.
+ */
+export type CommentStatus = 'open' | 'accepted' | 'rejected' | 'addressed'
+
 export interface CommentThread {
   id: string
   anchor: AnchorDescriptor
@@ -273,7 +281,9 @@ export interface CommentThread {
   owner: Actor
   comments: Comment[]
   createdAt: string
-  status: 'open' | 'resolved'
+  status: CommentStatus
+  /** The version created from this comment, once one has been. */
+  addressedIn?: string
   anchorStatus: AnchorStatus
   resolution?: AnchorResolution
   /** True when the lock the comment was written against has moved on. */

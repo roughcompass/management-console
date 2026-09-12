@@ -1,9 +1,10 @@
-import type { Actor } from '@adl/anchor-core'
-
 /**
  * A version of the page under review. The reviewer counts versions; the build
  * ids, locks and remote pins behind each one are the host's business and only
  * appear under Technical details.
+ *
+ * What happens to a version after this - whether it ships, and when - is not
+ * the review tool's business. It ends at the version.
  */
 export interface ReviewVersion {
   /** The host's build id. Never shown. */
@@ -15,8 +16,6 @@ export interface ReviewVersion {
   fromRequest?: string
   /** Comments the request that produced this version asked about. */
   addressing?: readonly string[]
-  approvedAt?: string
-  approvedBy?: Actor
 }
 
 export function versionLabel(index: number): string {

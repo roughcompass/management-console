@@ -76,14 +76,20 @@ describe('feedback store', () => {
     ])
   })
 
-  it('leaves resolved threads out of the re-anchor pass', () => {
+  it('leaves rejected threads out of the re-anchor pass, but not ones a version was built from', () => {
     const { store, at } = seed()
-    const thread = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'resolved in the last revision' })
-    store.setStatus(thread.id, 'resolved')
+    const declined = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'not doing this' })
+    store.setStatus(declined.id, 'rejected')
+    const built = store.createThread({ anchor: at(`[data-de-provenance-id="${ID.badge}"]`), author: designer, body: 'error status, not caution' })
+    store.markAddressed([built.id], 'build-b')
 
     const snapshot = store.reanchor(rebuild(), { buildId: 'build-b' })
-    expect(snapshot.total).toBe(0)
-    expect(thread.anchorStatus).toBe('resolved')
+    // Whether the version she asked for landed where she pointed is the whole
+    // question, so it still resolves; the one she declined does not.
+    expect(snapshot.total).toBe(1)
+    expect(built.addressedIn).toBe('build-b')
+    expect(built.resolution).toBeDefined()
+    expect(declined.resolution).toBeUndefined()
   })
 
   it('keeps per-build history so orphan rate can be compared across rebuilds', () => {

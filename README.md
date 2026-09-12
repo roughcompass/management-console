@@ -59,14 +59,19 @@ Payments"). **Comment on the whole page** covers anything wider than one thing
 — spacing, form patterns, wording. **Browse** hands the page back when you want
 to use it rather than talk about it.
 
-When you have said enough, **Request changes** shows exactly what will go, lets
-you hold anything back, and asks for the next version. Phase 1 has no agent
-behind that, so the shell has the next version on the shelf — payments-dash
-after a refactor: new file, restructured markup, the summary card deleted, the
-version bumped — and reveals it a moment later. Your comments follow the page
-into it, each saying whether it held, **Moved**, or is **Gone**. From
-**Versions** you keep it, go back to the one before, or approve it for
-deployment.
+Collecting feedback and acting on it are separate. Each comment is **Accepted**
+or **Rejected** when you are ready to decide; only accepted feedback builds
+anything. **Create new version** shows exactly what will go, and makes the next
+version from it. Phase 1 has no agent behind that, so the shell has the next
+version on the shelf — payments-dash after a refactor: new file, restructured
+markup, the summary card deleted, the version bumped — and reveals it a moment
+later. Your comments follow the page into it, each saying whether it held,
+**Moved**, or is **Gone**, and the ones it was built from sit together so you
+can check them. **Reopen** puts one back in play if the version did not settle
+it. **Versions** moves you to any version, back or forward.
+
+The tool ends at the version. Whether a version ships, and when, is a different
+system's concern and deliberately not modelled here.
 
 **Technical details** in the panel header shows the paths, source references,
 anchor levels and the Network, Runtime and Build views behind all of it; see

@@ -80,7 +80,8 @@ export const feedbackStyles = `
 .adl-pin[data-status='degraded'] { background: var(--salt-status-warning-borderColor, #e0a33e); }
 .adl-pin[data-status='orphaned'] { background: var(--salt-status-error-borderColor, #e4685d); }
 .adl-pin[data-selected='true'] { outline: 3px solid color-mix(in srgb, var(--salt-accent-background, #2d7ff9) 45%, transparent); }
-.adl-pin[data-thread-status='resolved'] { opacity: 0.45; }
+.adl-pin[data-thread-status='rejected'],
+.adl-pin[data-thread-status='addressed'] { opacity: 0.45; }
 
 .adl-composer {
   position: fixed;

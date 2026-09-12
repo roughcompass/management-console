@@ -82,7 +82,12 @@ export interface FeedbackContextValue {
   /** Feedback about the whole page, not any one part of it. */
   commentGeneral(topic: string, body: string): CommentThread
   reply(threadId: string, body: string): void
-  setThreadStatus(threadId: string, status: CommentThread['status']): void
+  /** Agreed: this goes into the next version. */
+  accept(threadId: string): void
+  /** Declined: this does not. */
+  reject(threadId: string): void
+  /** Back to undecided, or back in play after a version failed to settle it. */
+  reopen(threadId: string): void
   /** Feedback belongs to whoever wrote it, so only they can withdraw it. */
   canDelete(authorId: string): boolean
   deleteThread(threadId: string): void
@@ -92,18 +97,15 @@ export interface FeedbackContextValue {
   versions: ReviewVersion[]
   currentVersion: ReviewVersion
   onLatestVersion: boolean
+  /** Any version, back or forward. */
   viewVersion(id: string): void
-  approveCurrentVersion(): Promise<void>
 
-  // Open comments she has left out of the next request.
-  excludedThreadIds: ReadonlySet<string>
-  setIncluded(threadId: string, included: boolean): void
-  /** Open and not left out: exactly what Request changes sends. */
-  includedThreads: CommentThread[]
-  /** The request that would go right now, for her to read first. */
+  /** Accepted and not yet built from: exactly what the next version is made of. */
+  acceptedThreads: CommentThread[]
+  /** What would go right now, for her to read before it does. */
   draftRequest(): ChangeRequest
-  requestChanges(): Promise<ChangeRequest>
-  requesting: boolean
+  createNextVersion(): Promise<ChangeRequest>
+  creating: boolean
   lastRequest: ChangeRequest | null
 }
 
@@ -135,14 +137,14 @@ export interface FeedbackProviderProps {
    * build ids; `buildId` says which one is on screen.
    */
   versions?: readonly ReviewVersion[]
-  /** Put a version on screen. The host swaps the build and calls update(). */
+  /** Put any version on screen. The host swaps the build and calls update(). */
   onViewVersion?: (versionId: string) => void
   /**
-   * Take the request and build the next version. Resolves when that version is
-   * on screen, so the toolbar can say "building" until it is.
+   * Build the next version from the accepted feedback. Resolves when that
+   * version is on screen, so the toolbar can say so until it is; returning its
+   * id lets each comment record which version was built from it.
    */
-  onRequestChanges?: (request: ChangeRequest) => void | Promise<void>
-  onApprove?: (version: ReviewVersion) => void | Promise<void>
+  onCreateVersion?: (request: ChangeRequest) => void | string | Promise<void | string>
   children: ReactNode
 }
 
@@ -179,11 +181,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
   const [panelOpen, setPanelOpen] = useState(false)
   const [details, setDetailsState] = useState(readDetails)
   const [selectedThreadId, selectThread] = useState<string | null>(null)
-  const [excludedThreadIds, setExcluded] = useState<ReadonlySet<string>>(() => new Set())
-  const [approvals, setApprovals] = useState<ReadonlyMap<string, { at: string; by: Actor }>>(
-    () => new Map(),
-  )
-  const [requesting, setRequesting] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [lastRequest, setLastRequest] = useState<ChangeRequest | null>(null)
 
   const bump = useCallback(() => setVersion((v) => v + 1), [])
@@ -344,12 +342,9 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [actor, store],
   )
 
-  const setThreadStatus = useCallback(
-    (threadId: string, status: CommentThread['status']) => {
-      store.setStatus(threadId, status)
-    },
-    [store],
-  )
+  const accept = useCallback((threadId: string) => store.setStatus(threadId, 'accepted'), [store])
+  const reject = useCallback((threadId: string) => store.setStatus(threadId, 'rejected'), [store])
+  const reopen = useCallback((threadId: string) => store.setStatus(threadId, 'open'), [store])
 
   const canDelete = useCallback((authorId: string) => authorId === actor.id, [actor.id])
 
@@ -358,13 +353,6 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       store.removeThread(threadId)
       elementsRef.current.delete(threadId)
       selectThread((current) => (current === threadId ? null : current))
-      // It was only ever held back from a request it can no longer be in.
-      setExcluded((prev) => {
-        if (!prev.has(threadId)) return prev
-        const next = new Set(prev)
-        next.delete(threadId)
-        return next
-      })
     },
     [store],
   )
@@ -385,43 +373,24 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     }
   }, [])
 
-  const setIncluded = useCallback((threadId: string, included: boolean) => {
-    setExcluded((prev) => {
-      if (included === !prev.has(threadId)) return prev
-      const next = new Set(prev)
-      if (included) next.delete(threadId)
-      else next.add(threadId)
-      return next
-    })
-  }, [])
-
   const threads = useMemo(() => {
     void version
     return store.threads()
   }, [store, version])
 
-  const includedThreads = useMemo(
-    () => threads.filter((thread) => thread.status === 'open' && !excludedThreadIds.has(thread.id)),
-    [threads, excludedThreadIds],
+  const acceptedThreads = useMemo(
+    () => threads.filter((thread) => thread.status === 'accepted'),
+    [threads],
   )
 
   // A host that says nothing about versions still has one: what is on screen.
-  const versions = useMemo<ReviewVersion[]>(() => {
-    const given =
+  const versions = useMemo<ReviewVersion[]>(
+    () =>
       props.versions && props.versions.length > 0
         ? [...props.versions]
-        : [
-            {
-              id: props.buildId ?? lock.id,
-              label: versionLabel(0),
-              createdAt: lock.createdAt,
-            },
-          ]
-    return given.map((entry) => {
-      const approval = approvals.get(entry.id)
-      return approval ? { ...entry, approvedAt: approval.at, approvedBy: approval.by } : entry
-    })
-  }, [approvals, lock.createdAt, lock.id, props.buildId, props.versions])
+        : [{ id: props.buildId ?? lock.id, label: versionLabel(0), createdAt: lock.createdAt }],
+    [lock.createdAt, lock.id, props.buildId, props.versions],
+  )
 
   const currentVersionId = props.buildId ?? lock.id
   const currentVersion = useMemo(
@@ -437,12 +406,6 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [currentVersionId, props],
   )
 
-  const approveCurrentVersion = useCallback(async () => {
-    const at = new Date().toISOString()
-    setApprovals((prev) => new Map(prev).set(currentVersion.id, { at, by: actor }))
-    await props.onApprove?.({ ...currentVersion, approvedAt: at, approvedBy: actor })
-  }, [actor, currentVersion, props])
-
   const draftRequest = useCallback<FeedbackContextValue['draftRequest']>(
     () =>
       buildChangeRequest({
@@ -452,26 +415,28 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
         previewId,
         fromVersion: { id: currentVersion.id, label: currentVersion.label },
         lock,
-        included: includedThreads,
-        notIncluded: threads.filter(
-          (thread) => thread.status === 'open' && excludedThreadIds.has(thread.id),
-        ),
-        done: threads.filter((thread) => thread.status !== 'open'),
+        accepted: acceptedThreads,
+        rejected: threads.filter((thread) => thread.status === 'rejected'),
+        undecided: threads.filter((thread) => thread.status === 'open'),
       }),
-    [actor, currentVersion, excludedThreadIds, includedThreads, lock, previewId, threads],
+    [acceptedThreads, actor, currentVersion, lock, previewId, threads],
   )
 
-  const requestChanges = useCallback<FeedbackContextValue['requestChanges']>(async () => {
+  const createNextVersion = useCallback<FeedbackContextValue['createNextVersion']>(async () => {
     const request = draftRequest()
-    setRequesting(true)
+    const built = request.comments.map((comment) => comment.commentId)
+    setCreating(true)
     try {
-      await props.onRequestChanges?.(request)
+      const versionId = await props.onCreateVersion?.(request)
       setLastRequest(request)
+      // The feedback is spent: a version has been made from it, so the next one
+      // is not made from it again. Reopening puts a comment back in play.
+      store.markAddressed(built, typeof versionId === 'string' ? versionId : request.id)
       return request
     } finally {
-      setRequesting(false)
+      setCreating(false)
     }
-  }, [draftRequest, props])
+  }, [draftRequest, props, store])
 
   const value = useMemo<FeedbackContextValue>(
     () => ({
@@ -501,7 +466,9 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       commentOnTarget,
       commentGeneral,
       reply,
-      setThreadStatus,
+      accept,
+      reject,
+      reopen,
       canDelete,
       deleteThread,
       deleteReply,
@@ -509,31 +476,29 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       currentVersion,
       onLatestVersion,
       viewVersion,
-      approveCurrentVersion,
-      excludedThreadIds,
-      setIncluded,
-      includedThreads,
+      acceptedThreads,
       draftRequest,
-      requestChanges,
-      requesting,
+      createNextVersion,
+      creating,
       lastRequest,
     }),
     [
+      accept,
+      acceptedThreads,
       actor,
-      approveCurrentVersion,
       buildReport,
+      canDelete,
       captureCrop,
       commentGeneral,
       commentOnElement,
-      canDelete,
       commentOnTarget,
+      createNextVersion,
+      creating,
       currentVersion,
       deleteReply,
       deleteThread,
       details,
       draftRequest,
-      excludedThreadIds,
-      includedThreads,
       lastRequest,
       lock,
       manifest,
@@ -545,13 +510,11 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       props.overlayContainer,
       recorder,
       refresh,
+      reject,
+      reopen,
       reply,
-      requestChanges,
-      requesting,
       selectedThreadId,
       setDetails,
-      setIncluded,
-      setThreadStatus,
       store,
       threads,
       versions,

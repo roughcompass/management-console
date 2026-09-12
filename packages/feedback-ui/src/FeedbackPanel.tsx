@@ -172,16 +172,20 @@ function Disclosure({ children }: { children: ReactNode }): ReactNode {
 function CommentCard({ thread, number }: { thread: CommentThread; number: number }): ReactNode {
   const {
     reply,
-    setThreadStatus,
+    accept,
+    reject,
+    reopen,
     selectThread,
     selectedThreadId,
     details,
     canDelete,
     deleteThread,
     deleteReply,
+    versions,
   } = useFeedback()
   const [draft, setDraft] = useState('')
   const open = thread.status === 'open'
+  const builtInto = versions.find((entry) => entry.id === thread.addressedIn)
   const trouble = plainStatus(thread.anchorStatus)
   // The crop is for the reviewer: when the thing a comment was on has moved or
   // gone, a picture of it is the only thing that says what she meant.
@@ -203,7 +207,16 @@ function CommentCard({ thread, number }: { thread: CommentThread; number: number
               {trouble.label}
             </span>
           ) : null}
-          {!open ? <span className="adl-chip">Done</span> : null}
+          {thread.status === 'accepted' ? (
+            <span className="adl-chip" data-status="resolved">
+              <i className="adl-dot" aria-hidden="true" />
+              Accepted
+            </span>
+          ) : null}
+          {thread.status === 'rejected' ? <span className="adl-chip">Rejected</span> : null}
+          {thread.status === 'addressed' ? (
+            <span className="adl-chip">In {builtInto?.label ?? 'a newer version'}</span>
+          ) : null}
         </div>
         <div className="adl-row" style={{ gap: 4 }}>
           {first && canDelete(first.author.id) ? (
@@ -212,16 +225,45 @@ function CommentCard({ thread, number }: { thread: CommentThread; number: number
               onConfirm={() => deleteThread(thread.id)}
             />
           ) : null}
-          <button
-            type="button"
-            className="adl-btn"
-            onClick={(event) => {
-              event.stopPropagation()
-              setThreadStatus(thread.id, open ? 'resolved' : 'open')
-            }}
-          >
-            {open ? 'Mark done' : 'Reopen'}
-          </button>
+          {open ? (
+            <>
+              <button
+                type="button"
+                className="adl-btn"
+                aria-label={`reject comment ${number}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  reject(thread.id)
+                }}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="adl-btn"
+                data-variant="primary"
+                aria-label={`accept comment ${number}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  accept(thread.id)
+                }}
+              >
+                Accept
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="adl-btn"
+              aria-label={`reopen comment ${number}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                reopen(thread.id)
+              }}
+            >
+              {thread.status === 'addressed' ? 'Reopen' : 'Undo'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -365,27 +407,16 @@ function WholePageComposer(): ReactNode {
  * She reads exactly what will go, and takes out anything she wants kept but not
  * acted on yet. Comments marked done never go.
  */
-function RequestSheet({ onClose }: { onClose: () => void }): ReactNode {
-  const {
-    threads,
-    includedThreads,
-    excludedThreadIds,
-    setIncluded,
-    draftRequest,
-    requestChanges,
-    requesting,
-    details,
-  } = useFeedback()
+function CreateVersionSheet({ onClose }: { onClose: () => void }): ReactNode {
+  const { acceptedThreads, draftRequest, createNextVersion, creating, details } = useFeedback()
   const [error, setError] = useState<string | null>(null)
-  const open = threads.filter((thread) => thread.status === 'open')
-  const numberOf = (thread: CommentThread) => threads.indexOf(thread) + 1
-  const brief = includedThreads.length > 0 ? draftRequest().brief : null
+  const brief = acceptedThreads.length > 0 ? draftRequest().brief : null
 
-  const send = async () => {
-    if (requesting || includedThreads.length === 0) return
+  const create = async () => {
+    if (creating || acceptedThreads.length === 0) return
     setError(null)
     try {
-      await requestChanges()
+      await createNextVersion()
       onClose()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -393,40 +424,27 @@ function RequestSheet({ onClose }: { onClose: () => void }): ReactNode {
   }
 
   return (
-    <div className="adl-stack" aria-label="request changes">
+    <div className="adl-stack" aria-label="create new version">
       <div className="adl-row-between">
-        <strong>Request changes</strong>
-        <button type="button" className="adl-btn" onClick={onClose} disabled={requesting}>
+        <strong>New version</strong>
+        <button type="button" className="adl-btn" onClick={onClose} disabled={creating}>
           Back
         </button>
       </div>
       <p className="adl-muted">
-        {plural(includedThreads.length, 'comment')} will go to the team, who will build the next
-        version of this page. Untick anything you want to keep but not act on yet.
+        Built from the {plural(acceptedThreads.length, 'comment')} you accepted. Rejected and
+        undecided feedback stays where it is.
       </p>
 
       <ul className="adl-list">
-        {open.map((thread) => {
-          const number = numberOf(thread)
-          return (
-            <li key={thread.id} className="adl-pick">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!excludedThreadIds.has(thread.id)}
-                  aria-label={`include comment ${number}`}
-                  onChange={(event) => setIncluded(thread.id, event.target.checked)}
-                />
-                <span>
-                  <span className="adl-thread-title" style={{ margin: 0 }}>
-                    {describeAnchor(thread.anchor)}
-                  </span>
-                  <span className="adl-label">{thread.comments[0]?.body}</span>
-                </span>
-              </label>
-            </li>
-          )
-        })}
+        {acceptedThreads.map((thread) => (
+          <li key={thread.id} style={{ marginBottom: 8 }}>
+            <div className="adl-thread-title" style={{ margin: 0 }}>
+              {describeAnchor(thread.anchor)}
+            </div>
+            <div className="adl-label">{thread.comments[0]?.body}</div>
+          </li>
+        ))}
       </ul>
 
       {brief ? (
@@ -448,10 +466,10 @@ function RequestSheet({ onClose }: { onClose: () => void }): ReactNode {
         type="button"
         className="adl-btn adl-wide"
         data-variant="primary"
-        disabled={requesting || includedThreads.length === 0}
-        onClick={send}
+        disabled={creating || acceptedThreads.length === 0}
+        onClick={create}
       >
-        {requesting ? 'Building the next version…' : `Send ${plural(includedThreads.length, 'comment')}`}
+        {creating ? 'Building it…' : 'Create it'}
       </button>
       {error ? (
         <span className="adl-chip" data-status="orphaned">
@@ -463,51 +481,74 @@ function RequestSheet({ onClose }: { onClose: () => void }): ReactNode {
 }
 
 function CommentsTab(): ReactNode {
-  const { threads, includedThreads } = useFeedback()
-  const [requesting, setRequesting] = useState(false)
+  const { threads, acceptedThreads, currentVersion } = useFeedback()
+  const [creating, setCreating] = useState(false)
   const open = threads.filter((thread) => thread.status === 'open')
-  const done = threads.filter((thread) => thread.status !== 'open')
+  // What this version was built from is what she is here to check, so it stays
+  // in front of her. Older decisions fold away.
+  const inThisVersion = threads.filter(
+    (thread) => thread.status === 'addressed' && thread.addressedIn === currentVersion.id,
+  )
+  const settled = threads.filter(
+    (thread) =>
+      thread.status === 'rejected' ||
+      (thread.status === 'addressed' && thread.addressedIn !== currentVersion.id),
+  )
   const numberOf = (thread: CommentThread) => threads.indexOf(thread) + 1
+  const list = (group: CommentThread[]) => (
+    <ul className="adl-list">
+      {group.map((thread) => (
+        <CommentCard key={thread.id} thread={thread} number={numberOf(thread)} />
+      ))}
+    </ul>
+  )
 
-  if (requesting) return <RequestSheet onClose={() => setRequesting(false)} />
+  if (creating) return <CreateVersionSheet onClose={() => setCreating(false)} />
 
   return (
     <>
       <WholePageComposer />
 
       {threads.length === 0 ? (
-        <p className="adl-muted">
-          Click anything on the page to comment on it.
-        </p>
+        <p className="adl-muted">Click anything on the page to comment on it.</p>
       ) : (
         <>
-          <ul className="adl-list">
-            {open.map((thread) => (
-              <CommentCard key={thread.id} thread={thread} number={numberOf(thread)} />
-            ))}
-          </ul>
-          {done.length > 0 ? (
+          {open.length > 0 ? (
+            <>
+              <span className="adl-metric-label">to decide</span>
+              {list(open)}
+            </>
+          ) : null}
+          {acceptedThreads.length > 0 ? (
+            <>
+              <span className="adl-metric-label">going into the next version</span>
+              {list(acceptedThreads)}
+            </>
+          ) : null}
+          {inThisVersion.length > 0 ? (
+            <>
+              <span className="adl-metric-label">{currentVersion.label} was built from these</span>
+              {list(inThisVersion)}
+            </>
+          ) : null}
+          {settled.length > 0 ? (
             <details>
-              <summary>{plural(done.length, 'comment')} marked done</summary>
-              <ul className="adl-list" style={{ marginTop: 8 }}>
-                {done.map((thread) => (
-                  <CommentCard key={thread.id} thread={thread} number={numberOf(thread)} />
-                ))}
-              </ul>
+              <summary>{plural(settled.length, 'comment')} settled</summary>
+              <div style={{ marginTop: 8 }}>{list(settled)}</div>
             </details>
           ) : null}
         </>
       )}
 
-      {includedThreads.length > 0 ? (
+      {acceptedThreads.length > 0 ? (
         <div className="adl-panel-footer">
           <button
             type="button"
             className="adl-btn adl-wide"
             data-variant="primary"
-            onClick={() => setRequesting(true)}
+            onClick={() => setCreating(true)}
           >
-            Request changes ({includedThreads.length})
+            Create new version ({acceptedThreads.length})
           </button>
         </div>
       ) : null}
@@ -515,107 +556,53 @@ function CommentsTab(): ReactNode {
   )
 }
 
-/** Where she is in the history, and the two decisions she can make about it. */
+/**
+ * Every version of the page, newest first, and one button each to put any of
+ * them back on screen. What happens to a version after review - whether it
+ * ships - is somebody else's system.
+ */
 function VersionsTab(): ReactNode {
-  const {
-    versions,
-    currentVersion,
-    viewVersion,
-    approveCurrentVersion,
-    threads,
-    lastRequest,
-    details,
-  } = useFeedback()
-  const [approving, setApproving] = useState(false)
-  const previous = versions[versions.indexOf(currentVersion) - 1]
-
-  const approve = async () => {
-    setApproving(true)
-    try {
-      await approveCurrentVersion()
-    } finally {
-      setApproving(false)
-    }
-  }
+  const { versions, currentVersion, viewVersion, threads, details } = useFeedback()
 
   return (
     <ul className="adl-list">
       {[...versions].reverse().map((entry) => {
         const isCurrent = entry.id === currentVersion.id
-        const addressed = entry.addressing?.length ?? 0
+        const builtFrom = entry.addressing?.length ?? 0
         return (
           <RowCard key={entry.id} className="adl-version" selected={isCurrent}>
             <div className="adl-row-between">
               <div className="adl-row">
                 <strong>{entry.label}</strong>
                 {isCurrent ? <span className="adl-chip">You're viewing this</span> : null}
-                {entry.approvedAt ? (
-                  <span className="adl-chip" data-status="resolved">
-                    <i className="adl-dot" aria-hidden="true" />
-                    Ready to deploy
-                  </span>
-                ) : null}
               </div>
               {!isCurrent ? (
-                <button type="button" className="adl-btn" onClick={() => viewVersion(entry.id)}>
+                <button
+                  type="button"
+                  className="adl-btn"
+                  aria-label={`view ${entry.label}`}
+                  onClick={() => viewVersion(entry.id)}
+                >
                   View
                 </button>
               ) : null}
             </div>
 
             <div className="adl-label">
-              {addressed > 0
-                ? `Built from ${plural(addressed, 'comment')} · ${when(entry.createdAt)}`
+              {builtFrom > 0
+                ? `Built from ${plural(builtFrom, 'comment')} · ${when(entry.createdAt)}`
                 : versions.indexOf(entry) === 0
                   ? `The version you started from · ${when(entry.createdAt)}`
                   : when(entry.createdAt)}
             </div>
-            {entry.approvedAt ? (
-              <div className="adl-label">
-                Approved by {entry.approvedBy?.name ?? 'someone'} · {when(entry.approvedAt)}
-              </div>
-            ) : null}
-
-            {isCurrent && !entry.approvedAt ? (
-              <div className="adl-row" style={{ marginTop: 8 }}>
-                <button
-                  type="button"
-                  className="adl-btn"
-                  data-variant="primary"
-                  disabled={approving}
-                  onClick={approve}
-                >
-                  Approve for deployment
-                </button>
-                {previous ? (
-                  <button type="button" className="adl-btn" onClick={() => viewVersion(previous.id)}>
-                    Go back to {previous.label}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
 
             {details ? <div className="adl-mono">build {entry.id}</div> : null}
           </RowCard>
         )
       })}
 
-      {lastRequest ? (
-        <RowCard>
-          <span className="adl-metric-label">last request</span>
-          <div className="adl-label">
-            {plural(lastRequest.comments.length, 'comment')} sent from{' '}
-            {lastRequest.fromVersion.label} · {when(lastRequest.requestedAt)}
-          </div>
-          <p className="adl-muted" style={{ marginTop: 6 }}>
-            Your comments follow the page into each new version. Mark done the ones it fixed.
-          </p>
-          {details ? <div className="adl-mono">{lastRequest.id}</div> : null}
-        </RowCard>
-      ) : null}
-
       {threads.length === 0 && versions.length === 1 ? (
-        <p className="adl-muted">Comment on the page, then ask for the next version.</p>
+        <p className="adl-muted">Comment on the page, accept what should change, then make the next version.</p>
       ) : null}
     </ul>
   )
@@ -749,9 +736,10 @@ function BuildTab(): ReactNode {
 
 export function FeedbackPanel(): ReactNode {
   useFeedbackStyles()
-  const { metrics, threads, lock, setPanelOpen, details, setDetails } = useFeedback()
+  const { metrics, threads, acceptedThreads, lock, setPanelOpen, details, setDetails } =
+    useFeedback()
   const [tab, setTab] = useState<TabId>('comments')
-  const open = threads.filter((thread) => thread.status === 'open').length
+  const toDecide = threads.filter((thread) => thread.status === 'open').length
   const tabs = TABS.filter((entry) => details || !entry.technical)
 
   // Turning details off while on an engineering view leaves nothing to show there.
@@ -775,7 +763,7 @@ export function FeedbackPanel(): ReactNode {
     <aside className="adl-root adl-panel" aria-label="Feedback">
       <header className="adl-panel-header">
         <div className="adl-row-between">
-          <strong>{plural(open, 'open comment')}</strong>
+          <strong>Feedback</strong>
           <div className="adl-row">
             <button
               type="button"
@@ -793,6 +781,9 @@ export function FeedbackPanel(): ReactNode {
               ✕
             </button>
           </div>
+        </div>
+        <div className="adl-label" style={{ marginTop: 4 }}>
+          {toDecide} to decide · {acceptedThreads.length} accepted
         </div>
         {details ? (
           <div className="adl-row" style={{ marginTop: 10, gap: 18 }}>
@@ -845,7 +836,6 @@ export function FeedbackDock(): ReactNode {
     onLatestVersion,
     viewVersion,
   } = useFeedback()
-  const open = threads.filter((thread) => thread.status === 'open').length
   const latest = versions[versions.length - 1]!
 
   return (
@@ -879,7 +869,6 @@ export function FeedbackDock(): ReactNode {
           {versions.map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.label}
-              {entry.approvedAt ? ' · approved' : ''}
             </option>
           ))}
         </select>
@@ -899,7 +888,7 @@ export function FeedbackDock(): ReactNode {
         aria-pressed={panelOpen}
         onClick={() => setPanelOpen(!panelOpen)}
       >
-        {plural(open, 'comment')}
+        {plural(threads.length, 'comment')}
       </button>
     </div>
   )

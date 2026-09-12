@@ -54,14 +54,14 @@ export interface MountFeedbackToolbarOptions extends FeedbackToolbarUpdate {
   startOpen?: boolean
   /** Where the reviewer starts. Defaults to comment: she came here to comment. */
   initialMode?: ReviewMode
-  /** Put a version on screen. The host swaps the build and calls update(). */
+  /** Put any version on screen. The host swaps the build and calls update(). */
   onViewVersion?: (versionId: string) => void
   /**
-   * Take the request and build the next version. Resolves once that version is
-   * on screen, so the toolbar can say so until it is.
+   * Build the next version from the accepted feedback. Resolves once that
+   * version is on screen; returning its id lets each comment record which
+   * version was built from it.
    */
-  onRequestChanges?: (request: ChangeRequest) => void | Promise<void>
-  onApprove?: (version: ReviewVersion) => void | Promise<void>
+  onCreateVersion?: (request: ChangeRequest) => void | string | Promise<void | string>
 }
 
 export interface FeedbackToolbarHandle {
@@ -120,8 +120,7 @@ function ToolbarApp(props: AppProps): ReactNode {
         initialMode={props.initialMode}
         versions={props.versions}
         onViewVersion={props.onViewVersion}
-        onRequestChanges={props.onRequestChanges}
-        onApprove={props.onApprove}
+        onCreateVersion={props.onCreateVersion}
       >
         <FeedbackLayer />
         <FeedbackDock />

@@ -3,6 +3,7 @@ import type { Actor, BuildReport, ContextLock, ProvenanceManifest } from '@adl/a
 import { createLocalStorageRepository } from '@adl/feedback-store'
 import { PreviewRecorder, declareRuntimeEvents, mountFeedbackToolbar, versionLabel } from '@adl/feedback-ui'
 import type { ChangeRequest, FeedbackToolbarHandle, ReviewVersion } from '@adl/feedback-ui'
+
 import { getProvenanceRuntime } from '@de/ui-provenance/runtime'
 import { BUILDS } from './previews'
 import type { PreviewBuild } from './previews'
@@ -80,8 +81,8 @@ function readBuilds(): { manifest: ProvenanceManifest; report: BuildReport } | u
  * Phase 1 has no agent behind the toolbar, and the next version is already on
  * the shelf: BUILDS[1] is payments-dash after a refactor. So a change request
  * is recorded where the comments are, and then the version it would have
- * produced is revealed. Everything the reviewer does with it after that - keep
- * it, go back, approve it - is real.
+ * produced is revealed. Everything the reviewer does with it after that -
+ * reading it, moving between versions - is real.
  */
 const BUILD_MS = 1200
 
@@ -155,9 +156,9 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
       if (next) selectPreview(next)
     },
 
-    async onRequestChanges(request) {
+    async onCreateVersion(request) {
       recordRequest(options.previewId, request)
-      if (revealed >= BUILDS.length) return
+      if (revealed >= BUILDS.length) return undefined
       const next = BUILDS[revealed]!
       await new Promise((resolve) => setTimeout(resolve, BUILD_MS))
       revealed += 1
@@ -167,14 +168,7 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
         request.comments.map((comment) => comment.commentId),
       )
       selectPreview(next)
-    },
-
-    onApprove(version) {
-      localStorage.setItem(
-        `adl:approved:${options.previewId}`,
-        JSON.stringify({ versionId: version.id, at: version.approvedAt }),
-      )
-      console.info(`[review] ${version.label} approved for deployment`)
+      return next.id
     },
   })
 

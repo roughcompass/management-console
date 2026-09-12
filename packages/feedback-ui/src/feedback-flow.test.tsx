@@ -47,9 +47,8 @@ interface HarnessProps {
   body: string
   actor?: Actor
   versions?: ReviewVersion[]
-  onRequestChanges?: (request: ChangeRequest) => void
+  onCreateVersion?: (request: ChangeRequest) => string
   onViewVersion?: (id: string) => void
-  onApprove?: (version: ReviewVersion) => void
 }
 
 function Harness(props: HarnessProps) {
@@ -63,9 +62,8 @@ function Harness(props: HarnessProps) {
       buildId={props.buildId}
       previewRef={previewRef}
       versions={props.versions}
-      onRequestChanges={props.onRequestChanges}
+      onCreateVersion={props.onCreateVersion}
       onViewVersion={props.onViewVersion}
-      onApprove={props.onApprove}
       // The settle delay exists for lazily loaded remotes; tests drive the DOM
       // themselves and would otherwise wait on a timer for no reason.
       settleMs={0}
@@ -197,17 +195,15 @@ describe('anchored feedback across a rebuild', () => {
 })
 
 describe("the reviewer's round trip", () => {
-  it('comments, asks for the next version, then goes back and approves', async () => {
+  it('collects feedback, decides on it, makes a version, and moves between versions', async () => {
     const restore = stubRects()
-    const onRequestChanges = vi.fn<(request: ChangeRequest) => void>()
+    const onCreateVersion = vi.fn<(request: ChangeRequest) => string>(() => 'build-b')
     const onViewVersion = vi.fn<(id: string) => void>()
-    const onApprove = vi.fn<(version: ReviewVersion) => void>()
     const props = {
       selector: `[data-de-provenance-id="${ID.badge}"]`,
       body: 'a failed settlement is an error, not a caution',
-      onRequestChanges,
+      onCreateVersion,
       onViewVersion,
-      onApprove,
     }
 
     const view = render(
@@ -241,27 +237,29 @@ describe("the reviewer's round trip", () => {
     // Page-wide feedback is not on a node, so it gets no pin.
     expect(document.querySelectorAll('.adl-pin')).toHaveLength(3)
 
-    // #3 is dealt with, so it never goes.
-    fireEvent.click(screen.getAllByRole('button', { name: 'Mark done' })[2]!)
-    expect(screen.getByText('1 comment marked done')).toBeDefined()
+    // Collecting and deciding are separate: nothing goes until she says so.
+    expect(screen.queryByRole('button', { name: /Create new version/ })).toBeNull()
 
-    // #2 she wants kept but not acted on yet.
-    fireEvent.click(screen.getByRole('button', { name: 'Request changes (3)' }))
-    fireEvent.click(screen.getByLabelText('include comment 2'))
+    // #3 is declined, #2 she is not ready to decide, #1 and #4 she agrees with.
+    fireEvent.click(screen.getByLabelText('reject comment 3'))
+    fireEvent.click(screen.getByLabelText('accept comment 1'))
+    fireEvent.click(screen.getByLabelText('accept comment 4'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new version (2)' }))
     const brief = screen.getByLabelText('the brief').textContent ?? ''
-    expect(brief).toContain('2 comments to act on (not included: 1 done, 1 left out by the reviewer)')
+    expect(brief).toContain('2 accepted comments (not included: 1 rejected, 1 still undecided)')
     expect(brief).toContain('On parts of the page')
     expect(brief).toContain('1. Status badge')
     expect(brief).toContain('PositionsTable > StatusBadge')
     expect(brief).toContain('About the whole page')
     expect(brief).toContain('use one spacing scale')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send 2 comments' }))
-    await waitFor(() => expect(onRequestChanges).toHaveBeenCalledTimes(1))
-    const request = onRequestChanges.mock.calls[0]![0]
+    fireEvent.click(screen.getByRole('button', { name: 'Create it' }))
+    await waitFor(() => expect(onCreateVersion).toHaveBeenCalledTimes(1))
+    const request = onCreateVersion.mock.calls[0]![0]
     expect(request.comments.map((comment) => comment.anchorType)).toEqual(['visual-node', 'general'])
     expect(request.comments[0]!.label).toMatch(/^Status badge/)
-    expect(request.notIncluded).toHaveLength(1)
+    expect(request.rejected).toHaveLength(1)
     expect(request.fromVersion.label).toBe('Version 1')
 
     // The next version arrives and she is looking at it.
@@ -276,20 +274,45 @@ describe("the reviewer's round trip", () => {
       />,
     )
 
+    // The feedback it was built from is spent, so the next version is not
+    // built from it again.
+    await waitFor(() => expect(screen.getAllByText('In Version 2')).toHaveLength(2))
+    expect(screen.queryByRole('button', { name: /Create new version/ })).toBeNull()
+
     fireEvent.click(screen.getByRole('tab', { name: 'Versions' }))
     expect(screen.getByText("You're viewing this")).toBeDefined()
     expect(screen.getByText(/Built from 2 comments/)).toBeDefined()
 
-    // Wrong? Go back to what she had.
-    fireEvent.click(screen.getByRole('button', { name: 'Go back to Version 1' }))
+    // Back to any version, and forward again.
+    fireEvent.click(screen.getByRole('button', { name: 'view Version 1' }))
     expect(onViewVersion).toHaveBeenCalledWith('build-a')
+    restore()
+  })
 
-    // Right? Approve it, and it is marked ready to deploy.
-    fireEvent.click(screen.getByRole('button', { name: 'Approve for deployment' }))
-    await waitFor(() => expect(onApprove).toHaveBeenCalledTimes(1))
-    expect(onApprove.mock.calls[0]![0].label).toBe('Version 2')
-    expect(screen.getByText('Ready to deploy')).toBeDefined()
-    expect(screen.getByText(/Approved by Dana Whitfield/)).toBeDefined()
+  it('puts a comment back in play when the version did not settle it', async () => {
+    const restore = stubRects()
+    const onCreateVersion = vi.fn<(request: ChangeRequest) => string>(() => 'build-b')
+    const props = {
+      html: htmlV1(),
+      lock: lockV1,
+      manifest: manifestV1,
+      buildId: 'build-a',
+      selector: `[data-de-provenance-id="${ID.badge}"]`,
+      body: 'a failed settlement is an error, not a caution',
+      versions: [V1, V2],
+      onCreateVersion,
+    }
+    render(<Harness {...props} />)
+    fireEvent.click(screen.getByText('leave feedback'))
+    fireEvent.click(screen.getByLabelText('accept comment 1'))
+    fireEvent.click(screen.getByRole('button', { name: 'Create new version (1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create it' }))
+    await waitFor(() => expect(screen.getByText('In Version 2')).toBeDefined())
+
+    // It did not actually fix it, so it goes back to undecided.
+    fireEvent.click(screen.getByLabelText('reopen comment 1'))
+    expect(screen.getByLabelText('accept comment 1')).toBeDefined()
+    expect(screen.queryByText('In Version 2')).toBeNull()
     restore()
   })
 
@@ -318,7 +341,6 @@ describe("the reviewer's round trip", () => {
     fireEvent.click(screen.getByLabelText('delete comment 1, confirm'))
     // Gone from the list and off the page, and the one left is renumbered.
     expect(document.querySelectorAll('.adl-pin')).toHaveLength(1)
-    expect(screen.getByText('1 open comment')).toBeDefined()
     expect(document.querySelector('.adl-pin')?.textContent).toBe('1')
 
     // Someone else's feedback is not hers to withdraw.

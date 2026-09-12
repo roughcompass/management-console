@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { browse, comment, requestNextVersion } from './helpers'
+import { browse, comment, createNextVersion } from './helpers'
 
 const RUNTIME = `globalThis[Symbol.for('@de/ui-provenance/runtime')]`
 
@@ -163,7 +163,7 @@ test('re-resolves an anchor into a newly loaded remote build', async ({ page }) 
   // The next version arrives the way it does in the product: she comments and
   // asks for it.
   await comment(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .status', 'bump this')
-  await requestNextVersion(page)
+  await createNextVersion(page)
 
   const after = await page.evaluate(async (anchor) => {
     const runtime = (globalThis as never)[Symbol.for('@de/ui-provenance/runtime')] as {

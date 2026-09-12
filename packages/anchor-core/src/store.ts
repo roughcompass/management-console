@@ -169,6 +169,21 @@ export class FeedbackStore {
     return thread
   }
 
+  /**
+   * Creating a version consumes the feedback it was built from, so the next
+   * one is not built from the same comments again. Reopening puts a comment
+   * back in play when the version did not actually settle it.
+   */
+  markAddressed(threadIds: readonly string[], versionId: string): CommentThread[] {
+    return threadIds.map((threadId) => {
+      const thread = this.require(threadId)
+      thread.status = 'addressed'
+      thread.addressedIn = versionId
+      this.emit({ type: 'thread-updated', thread })
+      return thread
+    })
+  }
+
   reassign(threadId: string, owner: Actor): CommentThread {
     const thread = this.require(threadId)
     thread.owner = owner
@@ -194,7 +209,10 @@ export class FeedbackStore {
     this.registerLock(ctx.lock)
 
     for (const thread of this.threadMap.values()) {
-      if (thread.status === 'resolved') continue
+      // Declined feedback is out of the conversation. Feedback a version was
+      // built from is not: whether the new version actually landed where she
+      // pointed is the thing she is about to look at.
+      if (thread.status === 'rejected') continue
       const resolution = resolveAnchor(thread.anchor, ctx)
       thread.resolution = resolution
       thread.anchorStatus = resolution.status

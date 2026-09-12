@@ -37,13 +37,18 @@ export async function browse(page: Page): Promise<void> {
 }
 
 /**
- * Ask for the next version, the way a reviewer does. The shell has the next
- * build on the shelf, so this is what produces payments-dash 2.5.0.
+ * Accept everything still undecided, then build the next version from it - the
+ * way a reviewer gets one. The shell has that build on the shelf, so this is
+ * what produces payments-dash 2.5.0.
  */
-export async function requestNextVersion(page: Page): Promise<void> {
+export async function createNextVersion(page: Page): Promise<void> {
   await openPanel(page)
-  await page.getByRole('button', { name: /^Request changes/ }).click()
-  await page.getByRole('button', { name: /^Send \d+ comments?$/ }).click()
+  const undecided = page.getByRole('button', { name: /^accept comment \d+$/ })
+  for (let remaining = await undecided.count(); remaining > 0; remaining -= 1) {
+    await undecided.first().click()
+  }
+  await page.getByRole('button', { name: /^Create new version/ }).click()
+  await page.getByRole('button', { name: 'Create it' }).click()
   await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible({
     timeout: 15_000,
   })

@@ -50,8 +50,8 @@ export interface ChangeRequest {
   fromVersion: { id: string; label: string }
   lock: ContextLock
   comments: RequestedComment[]
-  /** Open comments she left out on purpose, so nobody goes looking for them. */
-  notIncluded: string[]
+  /** Feedback explicitly declined. A decision worth carrying, not an omission. */
+  rejected: string[]
   /** Everything above as text: what is being asked for, in the reviewers' words. */
   brief: string
 }
@@ -101,9 +101,9 @@ export interface BuildRequestInput {
   previewId: string
   fromVersion: { id: string; label: string }
   lock: ContextLock
-  included: CommentThread[]
-  notIncluded: CommentThread[]
-  done: CommentThread[]
+  accepted: CommentThread[]
+  rejected: CommentThread[]
+  undecided: CommentThread[]
 }
 
 export function buildChangeRequest(input: BuildRequestInput): ChangeRequest {
@@ -114,12 +114,15 @@ export function buildChangeRequest(input: BuildRequestInput): ChangeRequest {
     previewId: input.previewId,
     fromVersion: input.fromVersion,
     lock: input.lock,
-    comments: input.included.map(describeComment),
-    notIncluded: input.notIncluded.map((thread) => thread.id),
+    comments: input.accepted.map(describeComment),
+    rejected: input.rejected.map((thread) => thread.id),
   }
   return {
     ...base,
-    brief: formatBrief(base, { notIncluded: input.notIncluded.length, done: input.done.length }),
+    brief: formatBrief(base, {
+      rejected: input.rejected.length,
+      undecided: input.undecided.length,
+    }),
   }
 }
 
@@ -132,16 +135,16 @@ export function buildChangeRequest(input: BuildRequestInput): ChangeRequest {
  */
 export function formatBrief(
   request: Omit<ChangeRequest, 'brief'>,
-  counts: { notIncluded: number; done: number },
+  counts: { rejected: number; undecided: number },
 ): string {
   const lines: string[] = []
   const { comments, lock } = request
   lines.push(`Change request for ${request.previewId}, from ${request.fromVersion.label}`)
   const omitted =
-    counts.done || counts.notIncluded
-      ? ` (not included: ${counts.done} done, ${counts.notIncluded} left out by the reviewer)`
+    counts.rejected || counts.undecided
+      ? ` (not included: ${counts.rejected} rejected, ${counts.undecided} still undecided)`
       : ''
-  lines.push(`${comments.length} comment${comments.length === 1 ? '' : 's'} to act on${omitted}`)
+  lines.push(`${comments.length} accepted comment${comments.length === 1 ? '' : 's'}${omitted}`)
   const mfes = Object.entries(lock.mfes)
     .map(([name, version]) => `${name}@${version}`)
     .join(', ')

@@ -27,8 +27,7 @@ const toolbar = await mountFeedbackToolbar({
   // just has nowhere to send it and one version to show.
   versions,                                        // oldest first; buildId is the one on screen
   onViewVersion: (id) => host.showBuild(id),
-  onRequestChanges: async (request) => host.buildNext(request),
-  onApprove: (version) => host.markReadyToDeploy(version),
+  onCreateVersion: async (request) => host.buildNext(request), // returns the new version's id
 })
 ```
 
@@ -48,31 +47,44 @@ Someone follows a link, sees an application, and wants it changed. That is the
 whole product, and the toolbar is shaped around those four steps rather than
 around the anchoring machinery underneath them:
 
-1. **Say what is wrong.** Comment mode is on when the page loads, because she
+1. **Collect feedback.** Comment mode is on when the page loads, because she
    came here to comment: a click on anything is a comment on it, and the
    composer opens where she clicked. **Browse** hands the page back when she
    wants to use it rather than talk about it. Feedback wider than one thing —
    spacing, form patterns, wording — goes in as a comment on the whole page.
-2. **Talk about it.** Every comment takes replies, and is marked done when it
-   is dealt with. Done comments are never sent. A comment that should not
-   exist at all — the wrong element, a duplicate, a change of mind — is
-   deleted instead: only by whoever wrote it, and only after confirming,
-   because there is no undo and nowhere for it to go. Deleting the opening
-   comment deletes the thread and its pin; deleting a reply leaves the comment
-   standing. A deleted comment also stops counting towards the orphan rate,
-   which would otherwise report on feedback nobody has.
-3. **Ask for the next version.** **Request changes** shows exactly what will go
-   and lets her hold anything back, then hands the host a `ChangeRequest`. Her
-   comments follow the page into the version that comes back, each one saying
-   whether it held, moved, or is gone.
-4. **Keep it or don't.** From **Versions** she goes back to the one before, or
-   approves it for deployment.
+   Every comment takes replies. A comment that should not exist at all — the
+   wrong element, a duplicate, a change of mind — is deleted: only by whoever
+   wrote it, and only after confirming, because there is no undo and nowhere
+   for it to go. Deleting the opening comment deletes the thread and its pin;
+   deleting a reply leaves the comment standing. A deleted comment also stops
+   counting towards the orphan rate, which would otherwise report on feedback
+   nobody has.
+2. **Accept or reject it.** Saying something and deciding to act on it are
+   different, so they are different steps. A new comment is `open` until
+   somebody decides; **Accept** puts it in the next version, **Reject**
+   declines it. Only accepted feedback builds anything, so nothing happens by
+   default and undecided feedback blocks nothing.
+3. **Create the next version.** **Create new version** shows exactly what will
+   go and hands the host a `ChangeRequest` carrying the accepted comments.
+   Building a version spends the feedback it was built from — those comments
+   become `addressed`, so the next version is not built from them again — and
+   they group together under the version that came from them, because whether
+   it landed where she pointed is what she is about to check. **Reopen** puts
+   one back in play when it did not.
+4. **Move between versions.** Every version is listed with a button to put it
+   back on screen, and the dock has a picker for the same thing. Back or
+   forward, any of them.
 
-Steps 3 and 4 need a host: `onRequestChanges` builds the next version and
-resolves once it is on screen, `onViewVersion` puts an existing one back up,
-and `onApprove` records the decision. A host that passes none of them gets a
-toolbar that collects feedback and has nowhere to send it, which is a
-reasonable thing to want and the reason they are optional.
+Steps 3 and 4 need a host: `onCreateVersion` builds the next version and
+resolves once it is on screen (returning its id lets each comment record which
+version was built from it), and `onViewVersion` puts an existing one back up.
+A host that passes neither gets a toolbar that collects feedback and has
+nowhere to send it, which is a reasonable thing to want and the reason they are
+optional.
+
+**The tool ends at the version.** Whether a version ships, to whom, and when,
+is a different system's concern: this one has no notion of approval,
+environments or release, and should not grow one.
 
 ## Two people read it
 
@@ -107,16 +119,15 @@ label first.
 
 ## What a change request carries
 
-Every open comment is in the next request unless the reviewer unticks it in
-**Request changes**; a comment marked done never is. She reads the brief before
-it goes, and sending hands `onRequestChanges` a `ChangeRequest`:
+A version is built from the accepted comments and nothing else. She reads the
+brief before it goes, and `onCreateVersion` receives a `ChangeRequest`:
 
-- `comments` — what she is asking for, each with a plain `label`, its anchor
+- `comments` — the accepted feedback, each with a plain `label`, its anchor
   type, current anchor status and level, its location (semantic path, or the
   target for a network, runtime, build or whole-page anchor), the provenance
   reference when there is one, and every reply with its author's role;
-- `notIncluded` — ids of open comments she chose to hold back, so whatever is
-  on the other end does not go looking for them;
+- `rejected` — ids of feedback explicitly declined. A decision worth carrying,
+  not an omission: it says these were considered and turned down;
 - `fromVersion` and `lock` — the version the feedback was written against;
 - `brief` — the same thing as text: feedback on parts of the page first with
   its location, then feedback about the whole page, then network, runtime and
