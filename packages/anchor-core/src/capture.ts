@@ -41,6 +41,33 @@ const SECTION = '[data-mfe],[data-zone],section,article,main,[role="region"]'
  * The text a person sees on the node: text nodes only, skipping icons and
  * anything hidden from assistive technology, whitespace collapsed.
  */
+/**
+ * A label is only useful if it is the text the reviewer can see, so the cased
+ * form on screen wins over the cased form in the markup: a status rendered
+ * `text-transform: capitalize` reads "Failed" even though the DOM says
+ * "failed", and that is what she will call it.
+ */
+function transformed(text: string, element: Element | null): string {
+  const view = element?.ownerDocument?.defaultView
+  if (!view?.getComputedStyle) return text
+  let transform: string
+  try {
+    transform = view.getComputedStyle(element!).textTransform
+  } catch {
+    return text
+  }
+  switch (transform) {
+    case 'uppercase':
+      return text.toUpperCase()
+    case 'lowercase':
+      return text.toLowerCase()
+    case 'capitalize':
+      return text.replace(/(^|\s)(\p{L})/gu, (_, lead: string, first: string) => lead + first.toUpperCase())
+    default:
+      return text
+  }
+}
+
 export function visibleText(element: Element): string {
   const doc = element.ownerDocument
   if (!doc) return ''
@@ -59,7 +86,7 @@ export function visibleText(element: Element): string {
     // Adjacent text nodes in one element are one run ("88" + "%"); text from
     // different elements is separated, the way it reads on the page.
     if (out && node.parentNode !== lastParent) out += ' '
-    out += node.textContent
+    out += transformed(node.textContent, node.parentElement)
     lastParent = node.parentNode
   }
   return out.replace(/\s+/g, ' ').trim()

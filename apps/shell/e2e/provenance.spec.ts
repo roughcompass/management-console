@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { comment, requestNextVersion } from './helpers'
+import { browse, comment, requestNextVersion } from './helpers'
 
 const RUNTIME = `globalThis[Symbol.for('@de/ui-provenance/runtime')]`
 
@@ -107,6 +107,8 @@ test('tells repeated rows apart when the application supplies an instance key', 
 })
 
 test('resolves an element rendered through a portal', async ({ page }) => {
+  // Opening the dialog means operating the application, not commenting on it.
+  await browse(page)
   await page.locator('[data-mfe="payments-dash"]').getByRole('button', { name: 'New instruction' }).click()
   await page.waitForSelector('.dialog-body')
 

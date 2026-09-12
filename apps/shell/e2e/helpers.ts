@@ -28,6 +28,15 @@ export async function comment(page: Page, selector: string, body: string): Promi
 }
 
 /**
+ * Comment mode swallows clicks on the page, by design. A test that operates the
+ * application rather than commenting on it switches first, the same as a
+ * reviewer who wants to use the page.
+ */
+export async function browse(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Browse', exact: true }).click()
+}
+
+/**
  * Ask for the next version, the way a reviewer does. The shell has the next
  * build on the shelf, so this is what produces payments-dash 2.5.0.
  */

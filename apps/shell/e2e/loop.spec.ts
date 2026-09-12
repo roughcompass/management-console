@@ -42,6 +42,8 @@ test('a click on the page is a comment, with no mode to arm first', async ({ pag
 
   await openPanel(page)
   // What she sees is the thing in the words of the page.
+  // "failed" in the markup, `text-transform: capitalize` on screen. She reads
+  // Failed, so that is what the comment is on.
   await expect(page.locator(`${THREAD} .adl-thread-title`).first()).toHaveText(
     'Status badge “Failed” in Payments',
   )
