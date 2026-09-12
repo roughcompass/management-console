@@ -16,6 +16,7 @@ import { FeedbackLayer } from './FeedbackLayer.js'
 import { FeedbackProvider, useFeedback } from './context.js'
 import { PreviewRecorder } from './instrumentation.js'
 import { injectFeedbackStyles } from './styles.js'
+import type { FeedbackSubmission } from './submission.js'
 
 export type Density = 'high' | 'medium' | 'low' | 'touch'
 
@@ -47,6 +48,8 @@ export interface MountFeedbackToolbarOptions extends FeedbackToolbarUpdate {
   captureCrops?: boolean | ScreenshotOptions
   settleMs?: number
   startOpen?: boolean
+  /** Where a submission goes. Without it, sending only records the packet in the panel. */
+  onSubmit?: (submission: FeedbackSubmission) => void | Promise<void>
 }
 
 export interface FeedbackToolbarHandle {
@@ -102,6 +105,7 @@ function ToolbarApp(props: AppProps): ReactNode {
         repository={props.repository}
         captureCrops={props.captureCrops}
         settleMs={props.settleMs}
+        onSubmit={props.onSubmit}
       >
         <FeedbackLayer />
         <FeedbackDock />

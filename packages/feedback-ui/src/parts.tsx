@@ -37,6 +37,8 @@ export function targetSummary(anchor: AnchorDescriptor): string {
       return `${target.artifact} ${target.name}`
     case 'source-symbol':
       return `${target.file}#${target.symbol}`
+    case 'general':
+      return target.topic
   }
 }
 

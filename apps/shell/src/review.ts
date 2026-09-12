@@ -2,7 +2,7 @@ import { adaptUiProvenanceManifest, createContextLock, mergeProvenanceManifests 
 import type { Actor, BuildReport, ContextLock, ProvenanceManifest } from '@adl/anchor-core'
 import { createLocalStorageRepository } from '@adl/feedback-store'
 import { PreviewRecorder, declareRuntimeEvents, mountFeedbackToolbar } from '@adl/feedback-ui'
-import type { FeedbackToolbarHandle } from '@adl/feedback-ui'
+import type { FeedbackSubmission, FeedbackToolbarHandle } from '@adl/feedback-ui'
 import { getProvenanceRuntime } from '@de/ui-provenance/runtime'
 import type { PreviewBuild } from './previews'
 import { onRemoteLoaded } from './remotes'
@@ -80,6 +80,17 @@ export interface ReviewSession {
   stop(): void
 }
 
+/**
+ * Phase 1 has no agent behind the toolbar. The packet goes where the threads
+ * already go, so the phase that adds one reads it from the same place.
+ */
+function recordSubmission(previewId: string, submission: FeedbackSubmission): void {
+  const key = `adl:submissions:${previewId}`
+  const prior = JSON.parse(localStorage.getItem(key) ?? '[]') as FeedbackSubmission[]
+  localStorage.setItem(key, JSON.stringify([...prior, submission]))
+  console.info(`[review] feedback sent as ${submission.id}\n${submission.digest}`)
+}
+
 export async function startReview(options: StartReviewOptions): Promise<ReviewSession> {
   declareRuntimeEvents([...options.runtimeEvents])
   // Started before anything else loads: the remote entry fetches and the first
@@ -100,6 +111,7 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
     recorder,
     captureCrops: true,
     mode: options.mode ?? 'dark',
+    onSubmit: (submission) => recordSubmission(options.previewId, submission),
   })
 
   const push = () => {

@@ -22,6 +22,7 @@ const toolbar = await mountFeedbackToolbar({
   recorder,                  // optional, share one with the Frame
   captureCrops: true,
   mode: 'dark',
+  onSubmit: (submission) => sendToYourAgent(submission), // optional
 })
 ```
 
@@ -34,6 +35,35 @@ so the Frame's own chrome is not commentable.
 
 `toolbar.update({ lock, buildId, manifest, ... })` swaps the pinned inputs and
 re-anchors the open set. `toolbar.destroy()` removes it.
+
+## What leaves it
+
+Comments accumulate until a reviewer decides what the next build should act on.
+Every open thread is in the next submission unless the reviewer unticks
+**send to agent** on it; a closed thread never is. The **Submit** tab shows the
+packet before it goes — as text, because that is what the reviewer reads and
+what an agent reads — and sending it calls `onSubmit` with a
+`FeedbackSubmission`:
+
+- `threads` — the threads being sent, each with its anchor type, current
+  anchor status and level, its location (semantic path, or the target for a
+  network, runtime, build or general anchor), the provenance reference when
+  there is one, and every comment with its author's role;
+- `leftOut` — ids of open threads the reviewer chose not to send, so whatever
+  is on the other end does not go looking for them;
+- `lock` and `buildId` — what the feedback was written against;
+- `digest` — the same thing as text, element feedback first with its location,
+  then feedback about the preview as a whole, then network, runtime and build.
+
+General feedback (**General feedback** in the dock) is a thread with a
+`general` anchor and a topic — spacing, forms, navigation, content,
+accessibility, other. It has no node to pin to, resolves on every build, and
+sits in its own section of the digest, because it is not asking for a change
+at one place.
+
+Sending changes nothing about the threads: they stay open until the next build
+is pinned, re-anchor against it, and the reviewer closes what it fixed. Without
+an `onSubmit`, sending records the packet in the panel and goes no further.
 
 ## What it puts in the page
 

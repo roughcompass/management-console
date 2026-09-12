@@ -21,3 +21,5 @@ export {
 export { PreviewRecorder, declareRuntimeEvents, toUrlPattern } from './instrumentation.js'
 export type { NetworkEntry, RecorderOptions, RuntimeEventEntry } from './instrumentation.js'
 export { feedbackStyles, injectFeedbackStyles, useFeedbackStyles } from './styles.js'
+export { buildSubmission, describeThread, formatDigest } from './submission.js'
+export type { BuildSubmissionInput, FeedbackSubmission, SubmissionThread } from './submission.js'

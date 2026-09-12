@@ -1,7 +1,7 @@
 import type { Actor, ContextLock, ProvenanceManifest } from '@adl/anchor-core'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useRef } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ID,
   htmlV1,
@@ -12,8 +12,9 @@ import {
   manifestV2,
 } from '../../anchor-core/src/__fixtures__/dom.js'
 import { FeedbackLayer } from './FeedbackLayer.js'
-import { FeedbackPanel } from './FeedbackPanel.js'
+import { FeedbackDock, FeedbackPanel } from './FeedbackPanel.js'
 import { FeedbackProvider, useFeedback } from './context.js'
+import type { FeedbackSubmission } from './submission.js'
 
 const designer: Actor = { id: 'u-dw', name: 'Dana Whitfield', role: 'design' }
 
@@ -39,6 +40,8 @@ function Harness({
   buildId,
   selector,
   body,
+  dock,
+  onSubmit,
 }: {
   html: string
   lock: ContextLock
@@ -46,6 +49,8 @@ function Harness({
   buildId: string
   selector: string
   body: string
+  dock?: boolean
+  onSubmit?: (submission: FeedbackSubmission) => void
 }) {
   const previewRef = useRef<HTMLDivElement>(null)
   return (
@@ -59,11 +64,13 @@ function Harness({
       // The settle delay exists for lazily loaded remotes; tests drive the DOM
       // themselves and would otherwise wait on a timer for no reason.
       settleMs={0}
+      onSubmit={onSubmit}
     >
       <div ref={previewRef} data-testid="preview" dangerouslySetInnerHTML={{ __html: html }} />
       <Probe selector={selector} body={body} />
       <FeedbackPanel />
       <FeedbackLayer />
+      {dock ? <FeedbackDock /> : null}
     </FeedbackProvider>
   )
 }
@@ -164,5 +171,63 @@ describe('anchored feedback across a rebuild', () => {
     expect(screen.getByText('100%')).toBeDefined()
     expect(screen.getByText(/why \(5 levels tried\)/)).toBeDefined()
     expect(document.querySelector('.adl-pin')).toBeNull()
+  })
+})
+
+describe('choosing what the agent gets', () => {
+  it('sends open threads the reviewer kept, and says what was closed or left out', async () => {
+    const restore = stubRects()
+    const onSubmit = vi.fn<(submission: FeedbackSubmission) => void>()
+    render(
+      <Harness
+        html={htmlV1()}
+        lock={lockV1}
+        manifest={manifestV1}
+        buildId="build-a"
+        selector={`[data-de-provenance-id="${ID.badge}"]`}
+        body="a failed settlement is an error, not a caution"
+        dock
+        onSubmit={onSubmit}
+      />,
+    )
+    // Three on the same node (#1, #2, #3) ...
+    fireEvent.click(screen.getByText('leave feedback'))
+    fireEvent.click(screen.getByText('leave feedback'))
+    fireEvent.click(screen.getByText('leave feedback'))
+
+    // ... and one about the preview as a whole (#4), from the dock.
+    fireEvent.click(screen.getByRole('button', { name: 'General feedback' }))
+    const composer = screen.getByLabelText('general feedback')
+    fireEvent.change(within(composer).getByLabelText('topic'), { target: { value: 'spacing' } })
+    fireEvent.change(within(composer).getByLabelText('general feedback body'), {
+      target: { value: 'the two panels sit on different vertical rhythms; use one spacing scale' },
+    })
+    fireEvent.click(within(composer).getByRole('button', { name: 'Comment' }))
+    expect(screen.getByText(/general · spacing/)).toBeDefined()
+    // General feedback is not on a node, so it gets no pin.
+    expect(document.querySelectorAll('.adl-pin')).toHaveLength(3)
+
+    // #3 is dealt with; #2 is a real comment the reviewer does not want acted on yet.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[2]!)
+    fireEvent.click(screen.getByLabelText('send comment 2 to the agent'))
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Submit' }))
+    const digest = screen.getByLabelText('what will be sent').textContent ?? ''
+    expect(digest).toContain('2 threads to act on (not included: 1 closed, 1 left out by the reviewer)')
+    expect(digest).toContain('On specific elements')
+    expect(digest).toContain('PositionsTable > StatusBadge')
+    expect(digest).toContain('About the preview as a whole')
+    expect(digest).toContain('2. spacing')
+    expect(digest).toContain('use one spacing scale')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 threads to the agent' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    const sent = onSubmit.mock.calls[0]![0]
+    expect(sent.threads.map((thread) => thread.anchorType)).toEqual(['visual-node', 'general'])
+    expect(sent.threads[1]!.topic).toBe('spacing')
+    expect(sent.leftOut).toHaveLength(1)
+    expect(sent.lock.id).toBe(lockV1.id)
+    expect(screen.getByTestId('last-submission').textContent).toContain(sent.id)
+    restore()
   })
 })

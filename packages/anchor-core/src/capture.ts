@@ -97,6 +97,7 @@ const TARGET_ANCHOR_TYPE: Record<NonVisualTarget['kind'], AnchorType> = {
   'runtime-event': 'runtime-event',
   'build-artifact': 'build-artifact',
   'source-symbol': 'source-symbol',
+  general: 'general',
 }
 
 /**

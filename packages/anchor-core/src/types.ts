@@ -31,6 +31,7 @@ export type AnchorType =
   | 'runtime-event'
   | 'build-artifact'
   | 'source-symbol'
+  | 'general'
 
 /** DOM attributes that make up the provenance instrumentation contract. */
 export const ATTR = {
@@ -155,6 +156,11 @@ export type NonVisualTarget =
       file: string
       symbol: string
       line?: number
+    }
+  | {
+      /** Feedback about the preview as a whole: spacing, form patterns, tone. */
+      kind: 'general'
+      topic: string
     }
 
 export interface AnchorDescriptor {

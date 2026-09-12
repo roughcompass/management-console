@@ -23,6 +23,8 @@ import { recordPreviewVersion } from '@adl/feedback-store'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import { PreviewRecorder } from './instrumentation.js'
+import { buildSubmission } from './submission.js'
+import type { FeedbackSubmission } from './submission.js'
 
 export interface RefreshInput {
   lock?: ContextLock
@@ -32,25 +34,6 @@ export interface RefreshInput {
   remotes?: PreviewVersion['remotes']
   /** False re-resolves without metering. Defaults to true. */
   record?: boolean
-}
-
-export interface FeedbackSubmission {
-  previewId: string
-  lockId: string
-  comments: Array<{
-    threadId: string
-    anchorType: string
-    anchorStatus: string
-    comments: Array<{ author: string; body: string }>
-  }>
-  summary: {
-    total: number
-    elementComments: number
-    generalFeedback: number
-    resolved: number
-    degraded: number
-    orphaned: number
-  }
 }
 
 export interface FeedbackContextValue {
@@ -81,15 +64,19 @@ export interface FeedbackContextValue {
     options?: { layerHint?: Layer; crop?: string },
   ): CommentThread
   commentOnTarget(target: NonVisualTarget, body: string, options?: { layerHint?: Layer }): CommentThread
+  /** Feedback about the preview as a whole, not any one node. */
+  commentGeneral(topic: string, body: string): CommentThread
   reply(threadId: string, body: string): void
   setThreadStatus(threadId: string, status: CommentThread['status']): void
-  // New: track which comments are included in submission
-  selectedThreadIds: Set<string>
-  toggleThreadSelection(threadId: string): void
-  // New: add free-form feedback not tied to an element
-  addGeneralFeedback(body: string): CommentThread
-  // New: submit selected comments to agent for processing
-  submitFeedback(onHandler?: (submission: FeedbackSubmission) => Promise<void>): Promise<void>
+  /** Open threads the reviewer has left out of the next submission. */
+  excludedThreadIds: ReadonlySet<string>
+  setIncluded(threadId: string, included: boolean): void
+  /** Open and not left out: exactly what submit() sends. */
+  includedThreads: CommentThread[]
+  /** The packet submit() would send right now, for the reviewer to read first. */
+  previewSubmission(): FeedbackSubmission
+  submit(): Promise<FeedbackSubmission>
+  lastSubmission: FeedbackSubmission | null
 }
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null)
@@ -113,11 +100,17 @@ export interface FeedbackProviderProps {
   captureCrops?: boolean | ScreenshotOptions
   /** How long the preview DOM must be quiet before a metered pass runs. */
   settleMs?: number
+  /** Where a submission goes. The toolbar does not know what is on the other end. */
+  onSubmit?: (submission: FeedbackSubmission) => void | Promise<void>
   children: ReactNode
 }
 
+function submissionId(): string {
+  return `sub_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+}
+
 export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
-  const { actor, lock, manifest, buildReport, previewRef, previewId, repository } = props
+  const { actor, lock, manifest, buildReport, previewRef, previewId, repository, onSubmit } = props
 
   const store = useMemo(
     () => props.store ?? new FeedbackStore({ lock, buildId: props.buildId }),
@@ -134,7 +127,8 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
   const [picking, setPicking] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedThreadId, selectThread] = useState<string | null>(null)
-  const [selectedThreadIds, setSelectedThreadIds] = useState(new Set<string>())
+  const [excludedThreadIds, setExcluded] = useState<ReadonlySet<string>>(() => new Set())
+  const [lastSubmission, setLastSubmission] = useState<FeedbackSubmission | null>(null)
 
   const bump = useCallback(() => setVersion((v) => v + 1), [])
 
@@ -282,6 +276,11 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [actor, buildContext, bump, lock, manifest, store],
   )
 
+  const commentGeneral = useCallback<FeedbackContextValue['commentGeneral']>(
+    (topic, body) => commentOnTarget({ kind: 'general', topic }, body),
+    [commentOnTarget],
+  )
+
   const reply = useCallback(
     (threadId: string, body: string) => {
       store.addComment(threadId, actor, body)
@@ -296,83 +295,51 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [store],
   )
 
-  const toggleThreadSelection = useCallback(
-    (threadId: string) => {
-      setSelectedThreadIds((prev) => {
-        const next = new Set(prev)
-        if (next.has(threadId)) next.delete(threadId)
-        else next.add(threadId)
-        return next
-      })
-    },
-    [],
-  )
+  const setIncluded = useCallback((threadId: string, included: boolean) => {
+    setExcluded((prev) => {
+      if (included === !prev.has(threadId)) return prev
+      const next = new Set(prev)
+      if (included) next.delete(threadId)
+      else next.add(threadId)
+      return next
+    })
+  }, [])
 
-  const addGeneralFeedback = useCallback(
-    (body: string) => {
-      const target: NonVisualTarget = {
-        kind: 'runtime-event',
-        channel: 'general',
-        type: 'feedback',
-      }
-      const ctx = ctxRef.current ?? buildContext(lock, manifest)
-      const anchor = captureNonVisualAnchor(target, ctx)
-      const thread = store.createThread({ anchor, author: actor, body, layerHint: 'product' })
-      thread.resolution = resolveAnchor(anchor, ctx)
-      thread.anchorStatus = thread.resolution.status
-      bump()
-      return thread
-    },
-    [actor, buildContext, bump, lock, manifest, store],
-  )
-
-  const submitFeedback = useCallback(
-    async (onHandler?: (submission: FeedbackSubmission) => Promise<void>) => {
-      const selectedThreads = store.threads().filter((t) => {
-        // This will be populated via context after component mounts
-        // For now, we'll build from store
-        return true
-      })
-
-      const summary = {
-        total: selectedThreads.length,
-        elementComments: selectedThreads.filter((t) => t.anchor.anchorType === 'visual-node').length,
-        generalFeedback: selectedThreads.filter(
-          (t) => t.anchor.target?.kind === 'runtime-event' && t.anchor.target.channel === 'general',
-        ).length,
-        orphaned: selectedThreads.filter((t) => t.anchorStatus === 'orphaned').length,
-        degraded: selectedThreads.filter((t) => t.anchorStatus === 'degraded').length,
-        resolved: selectedThreads.filter((t) => t.anchorStatus === 'resolved').length,
-      }
-
-      const submission: FeedbackSubmission = {
-        previewId,
-        lockId: lock.id,
-        comments: selectedThreads.map((thread) => ({
-          threadId: thread.id,
-          anchorType: thread.anchor.anchorType,
-          anchorStatus: thread.anchorStatus,
-          comments: thread.comments.map((c) => ({ author: c.author.name, body: c.body })),
-        })),
-        summary,
-      }
-
-      if (onHandler) {
-        await onHandler(submission)
-      } else {
-        // Default: log to console and POST to /api/feedback (if available)
-        console.log('Feedback submission:', submission)
-        try {
-          await fetch('/api/feedback', { method: 'POST', body: JSON.stringify(submission) }).catch(() => {})
-        } catch {}
-      }
-    },
-    [store, previewId, lock.id],
-  )
-
-  const value = useMemo<FeedbackContextValue>(() => {
+  const threads = useMemo(() => {
     void version
-    return {
+    return store.threads()
+  }, [store, version])
+
+  const includedThreads = useMemo(
+    () => threads.filter((thread) => thread.status === 'open' && !excludedThreadIds.has(thread.id)),
+    [threads, excludedThreadIds],
+  )
+
+  const previewSubmission = useCallback<FeedbackContextValue['previewSubmission']>(
+    () =>
+      buildSubmission({
+        id: submissionId(),
+        now: new Date().toISOString(),
+        actor,
+        previewId,
+        lock,
+        buildId: props.buildId ?? lock.id,
+        included: includedThreads,
+        leftOut: threads.filter((thread) => thread.status === 'open' && excludedThreadIds.has(thread.id)),
+        closed: threads.filter((thread) => thread.status !== 'open'),
+      }),
+    [actor, excludedThreadIds, includedThreads, lock, previewId, props.buildId, threads],
+  )
+
+  const submit = useCallback<FeedbackContextValue['submit']>(async () => {
+    const submission = previewSubmission()
+    await onSubmit?.(submission)
+    setLastSubmission(submission)
+    return submission
+  }, [onSubmit, previewSubmission])
+
+  const value = useMemo<FeedbackContextValue>(
+    () => ({
       actor,
       previewId,
       previewRef,
@@ -382,7 +349,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       manifest,
       buildReport,
       recorder,
-      threads: store.threads(),
+      threads,
       metrics: store.meter.snapshot(store.buildId),
       picking,
       setPicking,
@@ -395,38 +362,45 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       captureCrop,
       commentOnElement,
       commentOnTarget,
+      commentGeneral,
       reply,
       setThreadStatus,
-      selectedThreadIds,
-      toggleThreadSelection,
-      addGeneralFeedback,
-      submitFeedback,
-    }
-  }, [
-    actor,
-    buildReport,
-    captureCrop,
-    commentOnElement,
-    commentOnTarget,
-    lock,
-    manifest,
-    panelOpen,
-    picking,
-    previewId,
-    previewRef,
-    props.overlayContainer,
-    recorder,
-    refresh,
-    reply,
-    selectedThreadId,
-    setThreadStatus,
-    selectedThreadIds,
-    toggleThreadSelection,
-    addGeneralFeedback,
-    submitFeedback,
-    store,
-    version,
-  ])
+      excludedThreadIds,
+      setIncluded,
+      includedThreads,
+      previewSubmission,
+      submit,
+      lastSubmission,
+    }),
+    [
+      actor,
+      buildReport,
+      captureCrop,
+      commentGeneral,
+      commentOnElement,
+      commentOnTarget,
+      excludedThreadIds,
+      includedThreads,
+      lastSubmission,
+      lock,
+      manifest,
+      panelOpen,
+      picking,
+      previewId,
+      previewRef,
+      previewSubmission,
+      props.overlayContainer,
+      recorder,
+      refresh,
+      reply,
+      selectedThreadId,
+      setIncluded,
+      setThreadStatus,
+      store,
+      submit,
+      threads,
+    ],
+  )
 
   return <FeedbackContext.Provider value={value}>{props.children}</FeedbackContext.Provider>
 }
