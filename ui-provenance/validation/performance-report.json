@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-09-12T01:39:10.855Z",
+  "app": "apps/payments-mfe",
+  "runs": 3,
+  "plainBuildMs": 10900,
+  "previewBuildMs": 11652,
+  "overheadRatio": 0.0691,
+  "budget": 0.15,
+  "passed": true
+}

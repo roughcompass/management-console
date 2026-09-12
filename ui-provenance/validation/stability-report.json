@@ -1,0 +1,119 @@
+{
+  "generatedAt": "2026-09-12T01:43:11.572Z",
+  "corpusSize": 151,
+  "edits": [
+    {
+      "edit": "reindent every line",
+      "kind": "formatting",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "insert blank lines and comments",
+      "kind": "formatting",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "reorder props",
+      "kind": "formatting",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "rename class names",
+      "kind": "formatting",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "add an unrelated sibling",
+      "kind": "ordinary",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "edit literal text",
+      "kind": "ordinary",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "add a prop to an existing element",
+      "kind": "ordinary",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "move a file",
+      "kind": "ordinary",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "rename a component",
+      "kind": "ordinary",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "wrap a subtree in a new element",
+      "kind": "ordinary",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "delete an element",
+      "kind": "destructive",
+      "eligible": 150,
+      "retained": 150,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    },
+    {
+      "edit": "duplicate an element",
+      "kind": "destructive",
+      "eligible": 151,
+      "retained": 151,
+      "falseReattachments": 0,
+      "retentionRate": 1
+    }
+  ],
+  "formattingRetentionRate": 1,
+  "ordinaryRetentionRate": 1,
+  "falseReattachmentRate": 0,
+  "criteria": {
+    "formattingRetention": {
+      "required": 1,
+      "actual": 1
+    },
+    "ordinaryRetention": {
+      "required": 0.98,
+      "actual": 1
+    },
+    "falseReattachments": {
+      "required": 0,
+      "actual": 0
+    }
+  }
+}

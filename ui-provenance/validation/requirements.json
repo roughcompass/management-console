@@ -1,0 +1,335 @@
+{
+  "specVersion": "0.2",
+  "requirements": [
+    {
+      "id": "UIP-001",
+      "implementation": [
+        "ui-provenance/src/compiler/discover.ts",
+        "ui-provenance/src/compiler/glob.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-002",
+      "implementation": [
+        "ui-provenance/src/compiler/registry.ts",
+        "ui-provenance/src/core/ids.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-003",
+      "implementation": [
+        "ui-provenance/src/compiler/registry.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "ui-provenance/test/stability.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-004",
+      "implementation": [
+        "ui-provenance/src/core/fingerprint.ts",
+        "ui-provenance/src/compiler/ast.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "ui-provenance/test/stability.test.ts"
+      ],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/stability-report.json"
+    },
+    {
+      "id": "UIP-005",
+      "implementation": [
+        "ui-provenance/src/compiler/registry.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "ui-provenance/test/stability.test.ts"
+      ],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/stability-report.json"
+    },
+    {
+      "id": "UIP-006",
+      "implementation": [
+        "ui-provenance/src/compiler/registry.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-007",
+      "implementation": [
+        "ui-provenance/src/compiler/babel.ts",
+        "ui-provenance/src/compiler/transform.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "apps/shell/e2e/loop.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-008",
+      "implementation": [
+        "ui-provenance/src/compiler/babel.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified",
+      "note": "Refs, keys, spreads, fragments and conditional JSX are asserted directly; server rendering is out of scope per the specification."
+    },
+    {
+      "id": "UIP-009",
+      "implementation": [
+        "ui-provenance/src/compiler/salt.ts",
+        "ui-provenance/src/compiler/ast.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "ui-provenance/test/runtime.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-010",
+      "implementation": [
+        "ui-provenance/src/compiler/salt.ts",
+        "ui-provenance/src/compiler/transform.ts"
+      ],
+      "tests": [
+        "apps/shell/e2e/salt-compat.spec.ts"
+      ],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/salt-catalog.json"
+    },
+    {
+      "id": "UIP-011",
+      "implementation": [
+        "ui-provenance/src/compiler/manifest.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/adapters.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-012",
+      "implementation": [
+        "ui-provenance/src/module-federation/index.ts"
+      ],
+      "tests": [
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-013",
+      "implementation": [
+        "ui-provenance/src/runtime/index.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-014",
+      "implementation": [
+        "ui-provenance/src/runtime/dom.ts",
+        "ui-provenance/src/eslint/index.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts",
+        "ui-provenance/test/eslint.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-015",
+      "implementation": [
+        "ui-provenance/src/core/confidence.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-016",
+      "implementation": [
+        "ui-provenance/src/runtime/index.ts",
+        "ui-provenance/src/core/errors.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-017",
+      "implementation": [
+        "ui-provenance/src/core/types.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-018",
+      "implementation": [
+        "ui-provenance/src/compiler/manifest.ts",
+        "ui-provenance/src/compiler/babel.ts",
+        "ui-provenance/scripts/production-check.mjs"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/production-report.json"
+    },
+    {
+      "id": "UIP-019",
+      "implementation": [
+        "ui-provenance/src/compiler/discover.ts",
+        "ui-provenance/src/compiler/manifest.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-020",
+      "implementation": [
+        "ui-provenance/src/runtime/index.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts",
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-021",
+      "implementation": [
+        "ui-provenance/src/vite/index.ts",
+        "ui-provenance/src/webpack/index.ts",
+        "ui-provenance/src/webpack/loader.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/adapters.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-022",
+      "implementation": [
+        "ui-provenance/src/eslint/index.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/eslint.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-NFR-001",
+      "implementation": [
+        "ui-provenance/scripts/performance-check.mjs"
+      ],
+      "tests": [],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/performance-report.json"
+    },
+    {
+      "id": "UIP-NFR-002",
+      "implementation": [
+        "ui-provenance/src/compiler/babel.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/production-report.json",
+      "note": "The production pass only removes authored attributes, so the artifact carries no provenance bytes at all."
+    },
+    {
+      "id": "UIP-NFR-003",
+      "implementation": [
+        "ui-provenance/src/runtime/index.ts"
+      ],
+      "tests": [
+        "apps/shell/e2e/provenance.spec.ts"
+      ],
+      "status": "verified",
+      "measurement": "ui-provenance/validation/resolution-report.json"
+    },
+    {
+      "id": "UIP-NFR-004",
+      "implementation": [
+        "ui-provenance/src/runtime/index.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/runtime.test.ts"
+      ],
+      "status": "verified",
+      "note": "Manifest retrieval is a GET of the build\u2019s own metadata; nothing is sent."
+    },
+    {
+      "id": "UIP-NFR-005",
+      "implementation": [
+        "ui-provenance/src/core/validate.ts",
+        "ui-provenance/schemas/registry.schema.json",
+        "ui-provenance/schemas/manifest.schema.json",
+        "ui-provenance/schemas/config.schema.json"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "UIP-NFR-006",
+      "implementation": [
+        "ui-provenance/package.json",
+        "ui-provenance/tsconfig.json"
+      ],
+      "tests": [],
+      "status": "verified",
+      "note": "tsc emits declarations for every subpath export; verified by `pnpm build`."
+    },
+    {
+      "id": "UIP-NFR-007",
+      "implementation": [
+        "ui-provenance/src/core/errors.ts"
+      ],
+      "tests": [
+        "ui-provenance/test/compiler.test.ts",
+        "ui-provenance/test/runtime.test.ts"
+      ],
+      "status": "verified"
+    }
+  ]
+}

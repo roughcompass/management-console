@@ -1,0 +1,8 @@
+{
+  "generatedAt": "2026-09-12T01:37:45.692Z",
+  "samples": 440,
+  "medianMs": 0.1,
+  "p95Ms": 0.2,
+  "budgetMs": 16.7,
+  "passed": true
+}
