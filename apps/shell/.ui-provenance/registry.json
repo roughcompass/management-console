@@ -2,7 +2,7 @@
   "applicationId": "frame-shell",
   "entries": [
     {
-      "astFingerprint": "sha256:2863b73bccf6d1d350b34cdc933e7f2122aa029170c449db4adceee42b0ce9d1",
+      "astFingerprint": "sha256:2b5b4cad547335cd4c5bf80f73b44f63e160dac6042123b01bc844fbc853a748",
       "elementKind": "host",
       "elementType": "div",
       "enclosingComponent": "App",
@@ -10,8 +10,8 @@
       "file": "src/App.tsx",
       "firstSeen": "2026-09-12T01:15:57.475Z",
       "humanName": "App.div",
-      "order": 7,
-      "parentSourceId": "prv_01M29N03YZ7C1CVPGRFJAMYNXN",
+      "order": 0,
+      "parentSourceId": null,
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYMZAYHYRP2MSK8VCAEY",
       "status": "active"
@@ -97,7 +97,7 @@
       "tombstonedAt": "2026-09-12T01:51:32.832Z"
     },
     {
-      "astFingerprint": "sha256:10bd4cf95a9e486d3235cfea2abb59ddf87bf76647accb961f1a98b4e7cd2a82",
+      "astFingerprint": "sha256:1ba46adad870935000b9c074f8cce13092db749aa8a0ada76889dfcffb143b8f",
       "elementKind": "application",
       "elementType": "Frame",
       "enclosingComponent": "App",
@@ -105,7 +105,7 @@
       "file": "src/App.tsx",
       "firstSeen": "2026-09-12T01:15:57.475Z",
       "humanName": "App.Frame",
-      "order": 8,
+      "order": 1,
       "parentSourceId": "prv_01M29JYYMZAYHYRP2MSK8VCAEY",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN35XY75M3GH2VYWC9V",
@@ -144,7 +144,7 @@
       "tombstonedAt": "2026-09-12T01:51:32.832Z"
     },
     {
-      "astFingerprint": "sha256:260e6bb80920cc07523b9370215e15fb589681639c2988f04e42ad879fe6f14c",
+      "astFingerprint": "sha256:eb42a6522e4b375371fb6097beb295120e4f5797fdd2825947d881dffac6671e",
       "elementKind": "application",
       "elementType": "Payments",
       "enclosingComponent": "App",
@@ -152,7 +152,7 @@
       "file": "src/App.tsx",
       "firstSeen": "2026-09-12T01:15:57.475Z",
       "humanName": "App.Payments",
-      "order": 9,
+      "order": 2,
       "parentSourceId": "prv_01M29JYYN35XY75M3GH2VYWC9V",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN3C4N6QJZPP8VCV793",
@@ -331,7 +331,7 @@
       "tombstonedAt": "2026-09-12T01:51:32.832Z"
     },
     {
-      "astFingerprint": "sha256:0125f2ea78f679bf29320e8f306758b768d65d7858a4eadb42eb5684363cc3a1",
+      "astFingerprint": "sha256:a01076d94c93dce21c3af1b48820e0be53adeefc82fb3eb6a7151fd2596b725c",
       "elementKind": "application",
       "elementType": "Limits",
       "enclosingComponent": "App",
@@ -339,7 +339,7 @@
       "file": "src/App.tsx",
       "firstSeen": "2026-09-12T01:15:57.475Z",
       "humanName": "App.Limits",
-      "order": 10,
+      "order": 3,
       "parentSourceId": "prv_01M29JYYN35XY75M3GH2VYWC9V",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN3NTPB7JDH5HYZW7JJ",
@@ -358,7 +358,8 @@
       "parentSourceId": "prv_01M29N03YZD6XK7H99YFB9EPP4",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN3QWTBJ622R4RVFSVS",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:9e5cfab2bccf1b72966a14e1b24bd73a266c28f2d0d5ef4e7711223cb96344a6",
@@ -421,7 +422,8 @@
       "parentSourceId": "prv_01M29KHT0EAXTEH26HCDH55FKG",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN3W5ZQ4SRAKDBD6X0Y",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:fda811d327be5cc07bcc551d746b0dda7cd6f20d0b4ca3eb2f0e3cae8742da48",
@@ -452,7 +454,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN4B51F8ABQTVYTEYAT",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:dbca215953ea629732817a8b62d2141177d3d8715567db8db53aaddd16f7b00a",
@@ -483,7 +486,8 @@
       "parentSourceId": "prv_01M29JYYN4B51F8ABQTVYTEYAT",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN4E36ZCF05TTV34DDP",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:c7deef129a9599407f62b90c202d42c95864c662b00dd18bb028b2fecf7960ef",
@@ -498,7 +502,8 @@
       "parentSourceId": null,
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN4KAHEC5RDZCC16F5R",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:428638b6379f5a3853b1f45979b1c3245c220086ade19334858e38aa1aa614bd",
@@ -513,7 +518,8 @@
       "parentSourceId": "prv_01M29JYYN4KAHEC5RDZCC16F5R",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:7e321f910030726c19afe4ea2fa239695dc59c83989a5885fb4cc0cf9f24e541",
@@ -528,7 +534,8 @@
       "parentSourceId": "prv_01M29JYYN4B51F8ABQTVYTEYAT",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN4WDQJNN30JHW0VSJ7",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:8716d83b4e14814185903795b26bf9200afe6792949b4c29cb0614df479139e0",
@@ -543,7 +550,8 @@
       "parentSourceId": "prv_01M29JYYN5DA4R5HHZ20PRHEE1",
       "siblingOrder": 1,
       "sourceId": "prv_01M29JYYN506HCTZ7NAF6FZ193",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:d83af98dacd8f203bc578212b364aa8f7bfc8ea4fc83c11abe23c5b0a55408a3",
@@ -558,7 +566,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 2,
       "sourceId": "prv_01M29JYYN52DN67M3MYMJGC99W",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:584eec68e809f343fe18e5db7c56d14a77c5c92262356d021310337e9be4a852",
@@ -573,7 +582,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN56DHX2J743AVR9BXJ",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:c6024c40d29f3493d80664ed903f43af45b5d26f2de233260bce81bc9f905a8b",
@@ -588,10 +598,11 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN5B5A2KWRJZRY00CFA",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
-      "astFingerprint": "sha256:064b249175367f408665217b3155fb3f710ee096d8c2b55152379af8255f2ca5",
+      "astFingerprint": "sha256:6548486f8c8817429148effa66ad32a6ec1fa65f479d7a9b1a507231f171f54d",
       "elementKind": "application",
       "elementType": "App",
       "enclosingComponent": "Anonymous",
@@ -618,7 +629,8 @@
       "parentSourceId": "prv_01M29JYYN5RFWF5FPWHHZ03KME",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN5CZ575JFQNYNCNKX8",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:2fe74a33959941721be156228cd66c26cf62c82fc4511c45ea11de48f009eb64",
@@ -633,7 +645,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 1,
       "sourceId": "prv_01M29JYYN5D7K16XAG0YG8NTHG",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:d7e80b6b447dfa748fc29dad9dd1353b15a4c6a5d09dc8511eeb88c96858260e",
@@ -648,7 +661,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN5DA4R5HHZ20PRHEE1",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:f08a5084c4c236b423b341287ab27b81049b6a41a1634f0cb18dd874a074c812",
@@ -663,7 +677,8 @@
       "parentSourceId": "prv_01M29JYYN5D7K16XAG0YG8NTHG",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN5GPQNHYP47K6R4TMD",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:cdba9334ae71408ad91856c9a9404887eb9a59d6497711c7fbde5608a456c245",
@@ -678,7 +693,8 @@
       "parentSourceId": "prv_01M29JYYN5D7K16XAG0YG8NTHG",
       "siblingOrder": 1,
       "sourceId": "prv_01M29JYYN5R2KRYB1J3C9A7MT1",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:0849229492fba7dce8ad222da1835887e9966e7409298c41224cf36d443d0399",
@@ -693,7 +709,8 @@
       "parentSourceId": "prv_01M29JYYN5DA4R5HHZ20PRHEE1",
       "siblingOrder": 0,
       "sourceId": "prv_01M29JYYN5R9648JANE5RCT953",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:a197924ea6fe861f799e92081db6863f2f5e72c8801cba15f7fcc60dce53d323",
@@ -708,7 +725,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 1,
       "sourceId": "prv_01M29JYYN5RC1Z0KXY8PRPDVT2",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:d7e80b6b447dfa748fc29dad9dd1353b15a4c6a5d09dc8511eeb88c96858260e",
@@ -723,7 +741,8 @@
       "parentSourceId": "prv_01M29JYYN4NK6820BH1D4MBA66",
       "siblingOrder": 1,
       "sourceId": "prv_01M29JYYN5RFWF5FPWHHZ03KME",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:f9aa76e1a19712a4623046d1b04dd1f015192ea5da713faa2b7833ff6c7ef2ef",
@@ -1158,7 +1177,8 @@
       "parentSourceId": "prv_01M29N03YYW3Z7SKW632C7G4GF",
       "siblingOrder": 0,
       "sourceId": "prv_01M29KHT0EAXTEH26HCDH55FKG",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:0c22a3157a493dd191005096cea7945a290c7d0c1cf0d2eb178b0b5b75841362",
@@ -1234,7 +1254,8 @@
       "parentSourceId": null,
       "siblingOrder": 0,
       "sourceId": "prv_01M29N03YYW3Z7SKW632C7G4GF",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:a84ec0e3b8e7ff41daa3caa9f8850f591cc99cebd62ab867dd05149dc3302987",
@@ -1249,7 +1270,8 @@
       "parentSourceId": "prv_01M29N03YYW3Z7SKW632C7G4GF",
       "siblingOrder": 1,
       "sourceId": "prv_01M29N03YZ7C1CVPGRFJAMYNXN",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:a9a3a1b5e834148fc17a852c9c165823c7e070a9f6461a4332dbf2da41029030",
@@ -1279,7 +1301,8 @@
       "parentSourceId": "prv_01M29N03YZPQSM6T41WHQQ688M",
       "siblingOrder": 0,
       "sourceId": "prv_01M29N03YZD6XK7H99YFB9EPP4",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:2c8ee7fe4a4f9e2c960762a1d684d127f129d86657cbf98c5c5896a373bfa8d4",
@@ -1294,7 +1317,8 @@
       "parentSourceId": "prv_01M29N03YZE9Z6GFJVQGTPMKF5",
       "siblingOrder": 0,
       "sourceId": "prv_01M29N03YZDJJCC14K4PAJ63FD",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:3f0ae93d7287e445d763147540829d3dcd0aa2975a76c68c031738c6b8bb371c",
@@ -1309,7 +1333,8 @@
       "parentSourceId": "prv_01M29N03YZD6XK7H99YFB9EPP4",
       "siblingOrder": 0,
       "sourceId": "prv_01M29N03YZE9Z6GFJVQGTPMKF5",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:2bd74def20e31e2bbb70f218b7b557daf23d4e02b6fb636c7898624e5065083f",
@@ -1324,7 +1349,8 @@
       "parentSourceId": "prv_01M29N03YYW3Z7SKW632C7G4GF",
       "siblingOrder": 0,
       "sourceId": "prv_01M29N03YZPQSM6T41WHQQ688M",
-      "status": "active"
+      "status": "tombstoned",
+      "tombstonedAt": "2026-09-12T20:30:16.055Z"
     },
     {
       "astFingerprint": "sha256:148169926323b6d22e2f517d40135dc3685d3d75a22b264d583aff1f33b5e61e",

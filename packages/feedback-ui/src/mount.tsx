@@ -16,7 +16,9 @@ import { FeedbackLayer } from './FeedbackLayer.js'
 import { FeedbackProvider, useFeedback } from './context.js'
 import { PreviewRecorder } from './instrumentation.js'
 import { injectFeedbackStyles } from './styles.js'
-import type { FeedbackSubmission } from './submission.js'
+import type { ChangeRequest } from './change-request.js'
+import type { ReviewMode } from './context.js'
+import type { ReviewVersion } from './versions.js'
 
 export type Density = 'high' | 'medium' | 'low' | 'touch'
 
@@ -29,7 +31,9 @@ export interface FeedbackToolbarUpdate {
   label?: string
   remotes?: PreviewVersion['remotes']
   previewRoot?: HTMLElement | string
-  mode?: 'light' | 'dark'
+  theme?: 'light' | 'dark'
+  /** Every version of the page so far, oldest first. `buildId` is the one shown. */
+  versions?: readonly ReviewVersion[]
 }
 
 export interface MountFeedbackToolbarOptions extends FeedbackToolbarUpdate {
@@ -48,8 +52,16 @@ export interface MountFeedbackToolbarOptions extends FeedbackToolbarUpdate {
   captureCrops?: boolean | ScreenshotOptions
   settleMs?: number
   startOpen?: boolean
-  /** Where a submission goes. Without it, sending only records the packet in the panel. */
-  onSubmit?: (submission: FeedbackSubmission) => void | Promise<void>
+  /** Where the reviewer starts. Defaults to comment: she came here to comment. */
+  initialMode?: ReviewMode
+  /** Put a version on screen. The host swaps the build and calls update(). */
+  onViewVersion?: (versionId: string) => void
+  /**
+   * Take the request and build the next version. Resolves once that version is
+   * on screen, so the toolbar can say so until it is.
+   */
+  onRequestChanges?: (request: ChangeRequest) => void | Promise<void>
+  onApprove?: (version: ReviewVersion) => void | Promise<void>
 }
 
 export interface FeedbackToolbarHandle {
@@ -88,7 +100,7 @@ function ToolbarApp(props: AppProps): ReactNode {
   }
 
   return (
-    <div className="adl-root" data-adl-mode={props.mode ?? 'dark'}>
+    <div className="adl-root" data-adl-theme={props.theme ?? 'dark'}>
       <FeedbackProvider
         actor={props.actor}
         previewId={props.previewId}
@@ -105,7 +117,11 @@ function ToolbarApp(props: AppProps): ReactNode {
         repository={props.repository}
         captureCrops={props.captureCrops}
         settleMs={props.settleMs}
-        onSubmit={props.onSubmit}
+        initialMode={props.initialMode}
+        versions={props.versions}
+        onViewVersion={props.onViewVersion}
+        onRequestChanges={props.onRequestChanges}
+        onApprove={props.onApprove}
       >
         <FeedbackLayer />
         <FeedbackDock />

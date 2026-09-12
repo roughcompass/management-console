@@ -5,36 +5,42 @@ import { useFeedback } from './context.js'
 import { AnchorSummary, LevelChip, Metric, StaleNotice, StatusChip, percent } from './parts.js'
 import { describeAnchor, plainStatus } from './plain.js'
 import { useFeedbackStyles } from './styles.js'
+import { versionPosition } from './versions.js'
 
-type TabId = 'comments' | 'network' | 'runtime' | 'build' | 'submit'
+type TabId = 'comments' | 'versions' | 'network' | 'runtime' | 'build'
 
 /**
- * Two people read this panel. The reviewer who left the comments sees what
- * they see on the page, in the words of the page. The engineer who acts on
- * them turns on Technical details and gets paths, source refs, anchor levels
- * and the Network, Runtime and Build views. Nothing technical is shown until
- * it is asked for, and it is asked for in one place.
+ * Two people read this panel. The reviewer who left the comments sees the page
+ * in the words of the page, and the loop she came for: say what is wrong, ask
+ * for the next version, keep it or go back. The engineer who builds that
+ * version turns on Technical details and gets paths, source references, anchor
+ * levels and the Network, Runtime and Build views. Nothing technical shows
+ * until it is asked for, and it is asked for in one place.
  */
 const TABS: Array<{ id: TabId; label: string; technical?: boolean }> = [
   { id: 'comments', label: 'Comments' },
+  { id: 'versions', label: 'Versions' },
   { id: 'network', label: 'Network', technical: true },
   { id: 'runtime', label: 'Runtime', technical: true },
   { id: 'build', label: 'Build', technical: true },
-  { id: 'submit', label: 'Send' },
 ]
 
-const GENERAL_TOPICS = ['spacing', 'forms', 'navigation', 'content', 'accessibility', 'other']
+const GENERAL_TOPICS = ['Spacing', 'Forms', 'Navigation', 'Wording', 'Accessibility', 'Something else']
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
-/**
- * The toolbar is deliberately not built from the host's design system. It
- * mounts over whatever the preview happens to be, reads design tokens when they
- * are there and falls back when they are not, and adds no second root-level
- * provider to the page.
- */
+function when(iso: string): string {
+  const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${plural(minutes, 'minute')} ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${plural(hours, 'hour')} ago`
+  return new Date(iso).toLocaleDateString()
+}
+
 function RowCard({
   children,
   selected,
@@ -57,7 +63,7 @@ function RowCard({
   )
 }
 
-/** Inline composer used by every non-visual anchor row. */
+/** Inline composer used by the Network, Runtime and Build rows. */
 function RowComposer({ onSubmit }: { onSubmit: (body: string) => void }): ReactNode {
   const [open, setOpen] = useState(false)
   const [body, setBody] = useState('')
@@ -112,23 +118,15 @@ function Disclosure({ children }: { children: ReactNode }): ReactNode {
   )
 }
 
-function ThreadCard({ thread, number }: { thread: CommentThread; number: number }): ReactNode {
-  const {
-    reply,
-    setThreadStatus,
-    selectThread,
-    selectedThreadId,
-    excludedThreadIds,
-    setIncluded,
-    details,
-  } = useFeedback()
+function CommentCard({ thread, number }: { thread: CommentThread; number: number }): ReactNode {
+  const { reply, setThreadStatus, selectThread, selectedThreadId, details } = useFeedback()
   const [draft, setDraft] = useState('')
   const open = thread.status === 'open'
-  const included = open && !excludedThreadIds.has(thread.id)
   const trouble = plainStatus(thread.anchorStatus)
-  // The crop is for the reviewer: when the thing a comment was on has moved
-  // or gone, a picture of it is the only thing that says what the comment meant.
+  // The crop is for the reviewer: when the thing a comment was on has moved or
+  // gone, a picture of it is the only thing that says what she meant.
   const crop = thread.anchorStatus !== 'resolved' ? thread.anchor.visual?.crop : undefined
+  const [first, ...replies] = thread.comments
 
   return (
     <RowCard
@@ -145,6 +143,7 @@ function ThreadCard({ thread, number }: { thread: CommentThread; number: number 
               {trouble.label}
             </span>
           ) : null}
+          {!open ? <span className="adl-chip">Done</span> : null}
         </div>
         <button
           type="button"
@@ -154,54 +153,35 @@ function ThreadCard({ thread, number }: { thread: CommentThread; number: number 
             setThreadStatus(thread.id, open ? 'resolved' : 'open')
           }}
         >
-          {open ? 'Close' : 'Reopen'}
+          {open ? 'Mark done' : 'Reopen'}
         </button>
       </div>
 
       <div className="adl-thread-title">{describeAnchor(thread.anchor)}</div>
-      {thread.stale && !details ? (
-        <div className="adl-label">Written on an earlier build</div>
-      ) : null}
+      {trouble ? <div className="adl-label">{trouble.hint}</div> : null}
       {crop ? <img className="adl-crop" src={crop} alt="what this comment was left on" /> : null}
 
-      <ul className="adl-list" style={{ margin: '6px 0' }}>
-        {thread.comments.map((comment) => (
-          <li key={comment.id} style={{ marginBottom: 6 }}>
-            <span className="adl-label">
-              {comment.author.name} · {comment.author.role}
-            </span>
-            <div>{comment.body}</div>
-          </li>
-        ))}
-      </ul>
-
-      <Disclosure>
-        <div className="adl-stack" style={{ gap: 4 }}>
-          <div className="adl-row">
-            <StatusChip status={thread.anchorStatus} />
-            <LevelChip resolution={thread.resolution} />
-          </div>
-          <AnchorSummary anchor={thread.anchor} resolution={thread.resolution} />
-          <StaleNotice entries={thread.staleAgainst} />
+      {first ? (
+        <div className="adl-comment">
+          <span className="adl-label">
+            {first.author.name} · {when(first.createdAt)}
+          </span>
+          <div>{first.body}</div>
         </div>
-      </Disclosure>
+      ) : null}
 
-      <div className="adl-row-between" style={{ marginTop: 6 }}>
-        <span className="adl-label">owner: {thread.owner.name}</span>
-        {open ? (
-          <label className="adl-include" onClick={(event) => event.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={included}
-              aria-label={`include comment ${number} when sent`}
-              onChange={(event) => setIncluded(thread.id, event.target.checked)}
-            />
-            Include when sent
-          </label>
-        ) : (
-          <span className="adl-label">Closed · won't be sent</span>
-        )}
-      </div>
+      {replies.length > 0 ? (
+        <ul className="adl-list adl-replies">
+          {replies.map((comment) => (
+            <li key={comment.id} className="adl-comment">
+              <span className="adl-label">
+                {comment.author.name} · {when(comment.createdAt)}
+              </span>
+              <div>{comment.body}</div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <form
         style={{ marginTop: 6 }}
@@ -216,170 +196,352 @@ function ThreadCard({ thread, number }: { thread: CommentThread; number: number 
           className="adl-input"
           aria-label={`reply to comment ${number}`}
           value={draft}
-          placeholder="Reply"
+          placeholder="Reply…"
           onChange={(event) => setDraft(event.target.value)}
         />
       </form>
+
+      <Disclosure>
+        <div className="adl-stack" style={{ gap: 4 }}>
+          <div className="adl-row">
+            <StatusChip status={thread.anchorStatus} />
+            <LevelChip resolution={thread.resolution} />
+          </div>
+          <AnchorSummary anchor={thread.anchor} resolution={thread.resolution} />
+          <StaleNotice entries={thread.staleAgainst} />
+          {details ? <span className="adl-label">owner: {thread.owner.name}</span> : null}
+        </div>
+      </Disclosure>
     </RowCard>
   )
 }
 
-function CommentsTab(): ReactNode {
-  const { threads } = useFeedback()
-  const open = threads.filter((thread) => thread.status === 'open')
-  const closed = threads.filter((thread) => thread.status !== 'open')
-  const lost = open.filter((thread) => thread.anchorStatus === 'orphaned').length
-  // Numbered by creation, the same as the pins, so #3 in the list is pin 3.
-  const numberOf = (thread: CommentThread) => threads.indexOf(thread) + 1
+/** Feedback about the whole page rather than one part of it. */
+function WholePageComposer(): ReactNode {
+  const { commentGeneral, selectThread } = useFeedback()
+  const [open, setOpen] = useState(false)
+  const [topic, setTopic] = useState(GENERAL_TOPICS[0]!)
+  const [body, setBody] = useState('')
 
-  if (threads.length === 0) {
+  if (!open) {
     return (
-      <p className="adl-muted">
-        No comments yet. Press <strong>Comment on something</strong> and click it, or leave{' '}
-        <strong>General feedback</strong> about the whole preview.
-      </p>
+      <button
+        type="button"
+        className="adl-btn adl-wide"
+        style={{ marginBottom: 10 }}
+        onClick={() => setOpen(true)}
+      >
+        Comment on the whole page
+      </button>
     )
   }
 
   return (
-    <>
-      {lost > 0 ? (
-        <p className="adl-chip" data-status="orphaned" style={{ marginBottom: 8 }}>
-          {lost === 1
-            ? "1 comment can't find what it was about in this build"
-            : `${lost} comments can't find what they were about in this build`}
-        </p>
-      ) : null}
-      <ul className="adl-list">
-        {open.map((thread) => (
-          <ThreadCard key={thread.id} thread={thread} number={numberOf(thread)} />
+    <form
+      className="adl-card adl-stack"
+      aria-label="whole page comment"
+      style={{ marginBottom: 10 }}
+      onSubmit={(event) => {
+        event.preventDefault()
+        const text = body.trim()
+        if (!text) return
+        const thread = commentGeneral(topic.toLowerCase(), text)
+        selectThread(thread.id)
+        setBody('')
+        setOpen(false)
+      }}
+    >
+      <span className="adl-label">Something wider than one part of the page</span>
+      <select
+        className="adl-input"
+        aria-label="topic"
+        value={topic}
+        onChange={(event) => setTopic(event.target.value)}
+      >
+        {GENERAL_TOPICS.map((entry) => (
+          <option key={entry} value={entry}>
+            {entry}
+          </option>
         ))}
-      </ul>
-      {closed.length > 0 ? (
-        <details>
-          <summary>{closed.length} closed</summary>
-          <ul className="adl-list" style={{ marginTop: 8 }}>
-            {closed.map((thread) => (
-              <ThreadCard key={thread.id} thread={thread} number={numberOf(thread)} />
-            ))}
-          </ul>
-        </details>
-      ) : null}
-    </>
+      </select>
+      <textarea
+        className="adl-input adl-textarea"
+        rows={3}
+        autoFocus
+        aria-label="whole page comment body"
+        placeholder="Spacing, form patterns, wording…"
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+      />
+      <div className="adl-row" style={{ justifyContent: 'flex-end' }}>
+        <button type="button" className="adl-btn" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+        <button type="submit" className="adl-btn" data-variant="primary">
+          Comment
+        </button>
+      </div>
+    </form>
   )
 }
 
 /**
- * The reviewer reads exactly what will leave, then sends it. Open comments go
- * unless they were left out; closed ones never do. Nothing here decides what
- * happens on the other end - that is the next phase.
+ * She reads exactly what will go, and takes out anything she wants kept but not
+ * acted on yet. Comments marked done never go.
  */
-function SendTab(): ReactNode {
-  const { threads, includedThreads, previewSubmission, submit, lastSubmission, details } =
-    useFeedback()
-  const [sending, setSending] = useState(false)
+function RequestSheet({ onClose }: { onClose: () => void }): ReactNode {
+  const {
+    threads,
+    includedThreads,
+    excludedThreadIds,
+    setIncluded,
+    draftRequest,
+    requestChanges,
+    requesting,
+    details,
+  } = useFeedback()
   const [error, setError] = useState<string | null>(null)
-
   const open = threads.filter((thread) => thread.status === 'open')
-  const closed = threads.length - open.length
-  const leftOut = open.length - includedThreads.length
-  const preview = includedThreads.length > 0 ? previewSubmission() : null
+  const numberOf = (thread: CommentThread) => threads.indexOf(thread) + 1
+  const brief = includedThreads.length > 0 ? draftRequest().brief : null
 
   const send = async () => {
-    if (!preview || sending) return
-    setSending(true)
+    if (requesting || includedThreads.length === 0) return
     setError(null)
     try {
-      await submit()
+      await requestChanges()
+      onClose()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      setSending(false)
     }
   }
 
   return (
-    <div className="adl-stack">
-      <div className="adl-row" style={{ gap: 18 }}>
-        <Metric value={String(includedThreads.length)} label="to send" />
-        <Metric value={String(leftOut)} label="left out" />
-        <Metric value={String(closed)} label="closed" />
+    <div className="adl-stack" aria-label="request changes">
+      <div className="adl-row-between">
+        <strong>Request changes</strong>
+        <button type="button" className="adl-btn" onClick={onClose} disabled={requesting}>
+          Back
+        </button>
       </div>
       <p className="adl-muted">
-        Everything open is sent unless you untick it. Closed comments are never sent.
+        {plural(includedThreads.length, 'comment')} will go to the team, who will build the next
+        version of this page. Untick anything you want to keep but not act on yet.
       </p>
 
-      {preview ? (
-        <>
-          <ol className="adl-send-list">
-            {preview.threads.map((thread) => {
-              const trouble = plainStatus(thread.anchorStatus)
-              return (
-                <li key={thread.threadId}>
-                  <div className="adl-thread-title">
-                    {thread.label}
-                    {trouble ? (
-                      <span className="adl-chip" data-status={thread.anchorStatus} style={{ marginLeft: 6 }}>
-                        {trouble.label}
-                      </span>
-                    ) : null}
-                  </div>
-                  {thread.comments.map((comment, index) => (
-                    <div key={index} className="adl-label">
-                      {comment.author}: {comment.body}
-                    </div>
-                  ))}
-                </li>
-              )
-            })}
-          </ol>
-          {details ? (
-            <pre className="adl-digest" aria-label="what will be sent">
-              {preview.digest}
+      <ul className="adl-list">
+        {open.map((thread) => {
+          const number = numberOf(thread)
+          return (
+            <li key={thread.id} className="adl-pick">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!excludedThreadIds.has(thread.id)}
+                  aria-label={`include comment ${number}`}
+                  onChange={(event) => setIncluded(thread.id, event.target.checked)}
+                />
+                <span>
+                  <span className="adl-thread-title" style={{ margin: 0 }}>
+                    {describeAnchor(thread.anchor)}
+                  </span>
+                  <span className="adl-label">{thread.comments[0]?.body}</span>
+                </span>
+              </label>
+            </li>
+          )
+        })}
+      </ul>
+
+      {brief ? (
+        details ? (
+          <pre className="adl-digest" aria-label="the brief">
+            {brief}
+          </pre>
+        ) : (
+          <details className="adl-disclosure">
+            <summary>Exactly what will be sent</summary>
+            <pre className="adl-digest" aria-label="the brief">
+              {brief}
             </pre>
-          ) : (
-            <details className="adl-disclosure">
-              <summary>Exactly what will be sent</summary>
-              <pre className="adl-digest" aria-label="what will be sent">
-                {preview.digest}
-              </pre>
-            </details>
-          )}
-        </>
-      ) : (
-        <p className="adl-muted">Nothing to send.</p>
-      )}
+          </details>
+        )
+      ) : null}
 
       <button
         type="button"
-        className="adl-btn"
+        className="adl-btn adl-wide"
         data-variant="primary"
-        disabled={!preview || sending}
+        disabled={requesting || includedThreads.length === 0}
         onClick={send}
       >
-        {sending ? 'Sending…' : `Send ${plural(includedThreads.length, 'comment')}`}
+        {requesting ? 'Building the next version…' : `Send ${plural(includedThreads.length, 'comment')}`}
       </button>
       {error ? (
         <span className="adl-chip" data-status="orphaned">
           {error}
         </span>
       ) : null}
+    </div>
+  )
+}
 
-      {lastSubmission ? (
-        <div className="adl-card adl-stack" data-testid="last-submission">
-          <span className="adl-metric-label">last sent</span>
-          <div>
-            {plural(lastSubmission.threads.length, 'comment')} ·{' '}
-            {new Date(lastSubmission.submittedAt).toLocaleTimeString()}
-            {details ? <span className="adl-mono"> · {lastSubmission.id}</span> : null}
-          </div>
-          <p className="adl-muted">
-            When the next build is ready, pin it here: each comment finds its place on it again,
-            and you close the ones it fixed.
-          </p>
+function CommentsTab(): ReactNode {
+  const { threads, includedThreads } = useFeedback()
+  const [requesting, setRequesting] = useState(false)
+  const open = threads.filter((thread) => thread.status === 'open')
+  const done = threads.filter((thread) => thread.status !== 'open')
+  const numberOf = (thread: CommentThread) => threads.indexOf(thread) + 1
+
+  if (requesting) return <RequestSheet onClose={() => setRequesting(false)} />
+
+  return (
+    <>
+      <WholePageComposer />
+
+      {threads.length === 0 ? (
+        <p className="adl-muted">
+          Click anything on the page to comment on it.
+        </p>
+      ) : (
+        <>
+          <ul className="adl-list">
+            {open.map((thread) => (
+              <CommentCard key={thread.id} thread={thread} number={numberOf(thread)} />
+            ))}
+          </ul>
+          {done.length > 0 ? (
+            <details>
+              <summary>{plural(done.length, 'comment')} marked done</summary>
+              <ul className="adl-list" style={{ marginTop: 8 }}>
+                {done.map((thread) => (
+                  <CommentCard key={thread.id} thread={thread} number={numberOf(thread)} />
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </>
+      )}
+
+      {includedThreads.length > 0 ? (
+        <div className="adl-panel-footer">
+          <button
+            type="button"
+            className="adl-btn adl-wide"
+            data-variant="primary"
+            onClick={() => setRequesting(true)}
+          >
+            Request changes ({includedThreads.length})
+          </button>
         </div>
       ) : null}
-    </div>
+    </>
+  )
+}
+
+/** Where she is in the history, and the two decisions she can make about it. */
+function VersionsTab(): ReactNode {
+  const {
+    versions,
+    currentVersion,
+    viewVersion,
+    approveCurrentVersion,
+    threads,
+    lastRequest,
+    details,
+  } = useFeedback()
+  const [approving, setApproving] = useState(false)
+  const previous = versions[versions.indexOf(currentVersion) - 1]
+
+  const approve = async () => {
+    setApproving(true)
+    try {
+      await approveCurrentVersion()
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  return (
+    <ul className="adl-list">
+      {[...versions].reverse().map((entry) => {
+        const isCurrent = entry.id === currentVersion.id
+        const addressed = entry.addressing?.length ?? 0
+        return (
+          <RowCard key={entry.id} className="adl-version" selected={isCurrent}>
+            <div className="adl-row-between">
+              <div className="adl-row">
+                <strong>{entry.label}</strong>
+                {isCurrent ? <span className="adl-chip">You're viewing this</span> : null}
+                {entry.approvedAt ? (
+                  <span className="adl-chip" data-status="resolved">
+                    <i className="adl-dot" aria-hidden="true" />
+                    Ready to deploy
+                  </span>
+                ) : null}
+              </div>
+              {!isCurrent ? (
+                <button type="button" className="adl-btn" onClick={() => viewVersion(entry.id)}>
+                  View
+                </button>
+              ) : null}
+            </div>
+
+            <div className="adl-label">
+              {addressed > 0
+                ? `Built from ${plural(addressed, 'comment')} · ${when(entry.createdAt)}`
+                : versions.indexOf(entry) === 0
+                  ? `The version you started from · ${when(entry.createdAt)}`
+                  : when(entry.createdAt)}
+            </div>
+            {entry.approvedAt ? (
+              <div className="adl-label">
+                Approved by {entry.approvedBy?.name ?? 'someone'} · {when(entry.approvedAt)}
+              </div>
+            ) : null}
+
+            {isCurrent && !entry.approvedAt ? (
+              <div className="adl-row" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="adl-btn"
+                  data-variant="primary"
+                  disabled={approving}
+                  onClick={approve}
+                >
+                  Approve for deployment
+                </button>
+                {previous ? (
+                  <button type="button" className="adl-btn" onClick={() => viewVersion(previous.id)}>
+                    Go back to {previous.label}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            {details ? <div className="adl-mono">build {entry.id}</div> : null}
+          </RowCard>
+        )
+      })}
+
+      {lastRequest ? (
+        <RowCard>
+          <span className="adl-metric-label">last request</span>
+          <div className="adl-label">
+            {plural(lastRequest.comments.length, 'comment')} sent from{' '}
+            {lastRequest.fromVersion.label} · {when(lastRequest.requestedAt)}
+          </div>
+          <p className="adl-muted" style={{ marginTop: 6 }}>
+            Your comments follow the page into each new version. Mark done the ones it fixed.
+          </p>
+          {details ? <div className="adl-mono">{lastRequest.id}</div> : null}
+        </RowCard>
+      ) : null}
+
+      {threads.length === 0 && versions.length === 1 ? (
+        <p className="adl-muted">Comment on the page, then ask for the next version.</p>
+      ) : null}
+    </ul>
   )
 }
 
@@ -509,11 +671,9 @@ function BuildTab(): ReactNode {
   )
 }
 
-/** The reviewer-side surface: comments, what will be sent, and - on request - the engineering views. */
 export function FeedbackPanel(): ReactNode {
   useFeedbackStyles()
-  const { metrics, threads, includedThreads, lock, setPanelOpen, details, setDetails } =
-    useFeedback()
+  const { metrics, threads, lock, setPanelOpen, details, setDetails } = useFeedback()
   const [tab, setTab] = useState<TabId>('comments')
   const open = threads.filter((thread) => thread.status === 'open').length
   const tabs = TABS.filter((entry) => details || !entry.technical)
@@ -536,12 +696,11 @@ export function FeedbackPanel(): ReactNode {
   }, [])
 
   return (
-    <aside className="adl-root adl-panel" aria-label="Preview feedback">
+    <aside className="adl-root adl-panel" aria-label="Feedback">
       <header className="adl-panel-header">
         <div className="adl-row-between">
-          <strong>Feedback</strong>
+          <strong>{plural(open, 'open comment')}</strong>
           <div className="adl-row">
-            {details ? <span className="adl-mono">lock {lock.id.slice(0, 8)}</span> : null}
             <button
               type="button"
               className="adl-btn"
@@ -552,19 +711,20 @@ export function FeedbackPanel(): ReactNode {
               Technical details
             </button>
             <button type="button" className="adl-btn"
-              aria-label="Close feedback panel"
+              aria-label="Close feedback"
               onClick={() => setPanelOpen(false)}
             >
               ✕
             </button>
           </div>
         </div>
-        <div className="adl-row" style={{ marginTop: 10, gap: 18 }}>
-          <Metric value={String(open)} label="open" />
-          <Metric value={String(includedThreads.length)} label="to send" />
-          {details ? <Metric value={percent(metrics.orphanRate)} label="orphan rate" /> : null}
-          {details ? <Metric value={metrics.meanConfidence.toFixed(2)} label="confidence" /> : null}
-        </div>
+        {details ? (
+          <div className="adl-row" style={{ marginTop: 10, gap: 18 }}>
+            <Metric value={percent(metrics.orphanRate)} label="orphan rate" />
+            <Metric value={metrics.meanConfidence.toFixed(2)} label="confidence" />
+            <span className="adl-mono">lock {lock.id.slice(0, 8)}</span>
+          </div>
+        ) : null}
       </header>
 
       <nav className="adl-tabs" role="tablist" aria-label="Feedback views">
@@ -583,129 +743,88 @@ export function FeedbackPanel(): ReactNode {
       </nav>
       <div className="adl-panel-body" role="tabpanel">
         {tab === 'comments' ? <CommentsTab /> : null}
+        {tab === 'versions' ? <VersionsTab /> : null}
         {tab === 'network' ? <NetworkTab /> : null}
         {tab === 'runtime' ? <RuntimeTab /> : null}
         {tab === 'build' ? <BuildTab /> : null}
-        {tab === 'submit' ? <SendTab /> : null}
       </div>
     </aside>
   )
 }
 
-/** Feedback that is about the preview, not a thing in it. Opens from the dock. */
-function GeneralComposer({ onClose }: { onClose: () => void }): ReactNode {
-  const { commentGeneral, selectThread, setPanelOpen } = useFeedback()
-  const [topic, setTopic] = useState(GENERAL_TOPICS[0]!)
-  const [body, setBody] = useState('')
-
-  return (
-    <form
-      className="adl-composer adl-general-composer"
-      aria-label="general feedback"
-      onSubmit={(event) => {
-        event.preventDefault()
-        const text = body.trim()
-        if (!text) return
-        const thread = commentGeneral(topic, text)
-        selectThread(thread.id)
-        setPanelOpen(true)
-        onClose()
-      }}
-    >
-      <div className="adl-stack">
-        <div className="adl-row-between">
-          <strong>General feedback</strong>
-          <span className="adl-label">about the whole preview</span>
-        </div>
-        <select
-          className="adl-input"
-          aria-label="topic"
-          value={topic}
-          onChange={(event) => setTopic(event.target.value)}
-        >
-          {GENERAL_TOPICS.map((entry) => (
-            <option key={entry} value={entry}>
-              {entry[0]!.toUpperCase() + entry.slice(1)}
-            </option>
-          ))}
-        </select>
-        <textarea
-          className="adl-input adl-textarea"
-          rows={3}
-          autoFocus
-          aria-label="general feedback body"
-          placeholder="Spacing, form patterns, wording - anything wider than one thing on the page"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-        />
-        <div className="adl-row" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="adl-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="adl-btn" data-variant="primary">
-            Comment
-          </button>
-        </div>
-      </div>
-    </form>
-  )
-}
-
 /**
- * The always-visible bar the Frame mounts into a preview. Everything else is
- * reachable from here, and nothing here depends on the preview app.
+ * The only thing always on screen. Mode, which version she is looking at, and
+ * the way into her comments - nothing else competes with the page.
  */
 export function FeedbackDock(): ReactNode {
   useFeedbackStyles()
-  const { picking, setPicking, panelOpen, setPanelOpen, metrics, threads, refresh, details } =
-    useFeedback()
-  const [generalOpen, setGeneralOpen] = useState(false)
+  const {
+    mode,
+    setMode,
+    panelOpen,
+    setPanelOpen,
+    threads,
+    versions,
+    currentVersion,
+    onLatestVersion,
+    viewVersion,
+  } = useFeedback()
   const open = threads.filter((thread) => thread.status === 'open').length
+  const latest = versions[versions.length - 1]!
 
   return (
-    <>
-      {generalOpen ? <GeneralComposer onClose={() => setGeneralOpen(false)} /> : null}
-      <div className="adl-root adl-dock" aria-label="Feedback toolbar">
+    <div className="adl-root adl-dock" aria-label="Review">
+      <div className="adl-segmented" role="group" aria-label="Mode">
         <button
           type="button"
           className="adl-btn"
-          data-active={picking}
-          onClick={() => {
-            setGeneralOpen(false)
-            setPicking(!picking)
-          }}
+          aria-pressed={mode === 'comment'}
+          onClick={() => setMode('comment')}
         >
-          {picking ? 'Click something to comment · Esc to cancel' : 'Comment on something'}
+          Comment
         </button>
         <button
           type="button"
           className="adl-btn"
-          data-active={generalOpen}
-          onClick={() => {
-            setPicking(false)
-            setGeneralOpen(!generalOpen)
-          }}
+          aria-pressed={mode === 'browse'}
+          onClick={() => setMode('browse')}
         >
-          General feedback
-        </button>
-        {details ? (
-          <button type="button" className="adl-btn" onClick={() => refresh({ record: false })}>
-            Re-anchor
-          </button>
-        ) : null}
-        {details ? (
-          <span className="adl-chip" data-status={metrics.orphanRate > 0 ? 'orphaned' : 'resolved'}>
-            {percent(metrics.orphanRate)} orphaned
-          </span>
-        ) : metrics.orphaned > 0 ? (
-          <span className="adl-chip" data-status="orphaned">
-            {metrics.orphaned} can't be found
-          </span>
-        ) : null}
-        <button type="button" className="adl-btn" onClick={() => setPanelOpen(!panelOpen)}>
-          {panelOpen ? 'Hide comments' : `Comments (${open})`}
+          Browse
         </button>
       </div>
-    </>
+
+      {versions.length > 1 ? (
+        <select
+          className="adl-input adl-version-select"
+          aria-label="Version"
+          value={currentVersion.id}
+          onChange={(event) => viewVersion(event.target.value)}
+        >
+          {versions.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.label}
+              {entry.approvedAt ? ' · approved' : ''}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className="adl-label">{versionPosition(versions, currentVersion.id)}</span>
+      )}
+
+      {!onLatestVersion ? (
+        <button type="button" className="adl-btn" onClick={() => viewVersion(latest.id)}>
+          Back to {latest.label}
+        </button>
+      ) : null}
+
+      <button
+        type="button"
+        className="adl-btn"
+        aria-pressed={panelOpen}
+        onClick={() => setPanelOpen(!panelOpen)}
+      >
+        {plural(open, 'comment')}
+      </button>
+    </div>
   )
 }

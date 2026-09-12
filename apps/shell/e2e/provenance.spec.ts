@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { comment, requestNextVersion } from './helpers'
 
 const RUNTIME = `globalThis[Symbol.for('@de/ui-provenance/runtime')]`
 
@@ -157,8 +158,10 @@ test('re-resolves an anchor into a newly loaded remote build', async ({ page }) 
   const before = await resolveSelector(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .status')
   expect(before?.confidence).toBe('exact')
 
-  await page.getByRole('radio', { name: /payments-dash 2\.5\.0/ }).click()
-  await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible()
+  // The next version arrives the way it does in the product: she comments and
+  // asks for it.
+  await comment(page, '[data-mfe="payments-dash"] tbody tr:nth-child(1) .status', 'bump this')
+  await requestNextVersion(page)
 
   const after = await page.evaluate(async (anchor) => {
     const runtime = (globalThis as never)[Symbol.for('@de/ui-provenance/runtime')] as {

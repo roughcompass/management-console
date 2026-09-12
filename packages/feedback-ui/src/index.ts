@@ -1,5 +1,10 @@
 export { FeedbackProvider, useFeedback } from './context.js'
-export type { FeedbackContextValue, FeedbackProviderProps, RefreshInput } from './context.js'
+export type {
+  FeedbackContextValue,
+  FeedbackProviderProps,
+  RefreshInput,
+  ReviewMode,
+} from './context.js'
 export { FeedbackLayer } from './FeedbackLayer.js'
 export { FeedbackDock, FeedbackPanel } from './FeedbackPanel.js'
 export { mountFeedbackToolbar } from './mount.js'
@@ -22,5 +27,7 @@ export { PreviewRecorder, declareRuntimeEvents, toUrlPattern } from './instrumen
 export type { NetworkEntry, RecorderOptions, RuntimeEventEntry } from './instrumentation.js'
 export { feedbackStyles, injectFeedbackStyles, useFeedbackStyles } from './styles.js'
 export { describeAnchor, humanize, plainStatus } from './plain.js'
-export { buildSubmission, describeThread, formatDigest } from './submission.js'
-export type { BuildSubmissionInput, FeedbackSubmission, SubmissionThread } from './submission.js'
+export { buildChangeRequest, describeComment, formatBrief } from './change-request.js'
+export type { BuildRequestInput, ChangeRequest, RequestedComment } from './change-request.js'
+export { isLatest, versionLabel, versionPosition } from './versions.js'
+export type { ReviewVersion } from './versions.js'

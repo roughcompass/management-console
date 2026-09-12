@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useFeedback } from './context.js'
-import { humanize } from './plain.js'
+import { humanize, plainStatus } from './plain.js'
 import { useFeedbackStyles } from './styles.js'
 
 interface Draft {
@@ -17,14 +17,15 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Click-to-anchor over a running preview. The overlay marks itself so the
- * anchor index skips it: a comment must never anchor to the commenting tool.
+ * The page, with comments on it. A reviewer who followed a link to give
+ * feedback is in comment mode already: she clicks the thing she means and
+ * writes. Nothing to arm first, and Browse hands the page back when she wants
+ * to use it rather than talk about it.
  */
 export function FeedbackLayer(): ReactNode {
   useFeedbackStyles()
   const {
-    picking,
-    setPicking,
+    mode,
     threads,
     elementFor,
     commentOnElement,
@@ -44,6 +45,7 @@ export function FeedbackLayer(): ReactNode {
   const [saving, setSaving] = useState(false)
   const [, setTick] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const commenting = mode === 'comment'
 
   const reposition = useCallback(() => setTick((t) => t + 1), [])
 
@@ -66,27 +68,46 @@ export function FeedbackLayer(): ReactNode {
     [previewRef],
   )
 
+  // A crosshair over the page is the whole affordance for "click anything".
   useEffect(() => {
-    if (!picking) {
+    if (!commenting) return
+    document.documentElement.setAttribute('data-adl-commenting', '')
+    return () => document.documentElement.removeAttribute('data-adl-commenting')
+  }, [commenting])
+
+  useEffect(() => {
+    if (!commenting) {
       setHovered(null)
       return
     }
+    // Capture phase, so the target is the deepest element under the pointer
+    // before the page's own handlers see the event.
     const onMove = (event: MouseEvent) => {
-      const element = document.elementFromPoint(event.clientX, event.clientY)
+      if (draft) return
+      const element = event.target as Element | null
       setHovered(insidePreview(element) ? element : null)
     }
     const onClick = (event: MouseEvent) => {
-      const element = document.elementFromPoint(event.clientX, event.clientY)
+      const element = event.target as Element | null
       if (!insidePreview(element)) return
-      // The preview is a running app: a pick must not also fire its handlers.
+      // The page under review is a running app: a click meant as a comment must
+      // not also press its buttons.
       event.preventDefault()
       event.stopPropagation()
+      // While a comment is being written, the next click puts it away rather
+      // than starting a second one on top of it.
+      if (draft) {
+        setDraft(null)
+        setBody('')
+        return
+      }
       setDraft({ element, x: event.clientX, y: event.clientY })
-      setPicking(false)
       setHovered(null)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setPicking(false)
+      if (event.key !== 'Escape') return
+      setDraft(null)
+      setBody('')
     }
     document.addEventListener('mousemove', onMove, true)
     document.addEventListener('click', onClick, true)
@@ -96,7 +117,7 @@ export function FeedbackLayer(): ReactNode {
       document.removeEventListener('click', onClick, true)
       document.removeEventListener('keydown', onKey, true)
     }
-  }, [insidePreview, picking, setPicking])
+  }, [commenting, draft, insidePreview])
 
   useEffect(() => {
     if (draft) inputRef.current?.focus()
@@ -108,8 +129,8 @@ export function FeedbackLayer(): ReactNode {
     buildSemanticPath(element, manifest, previewRef.current ?? undefined)
   const pathOf = (element: Element) =>
     formatSemanticPath(semanticOf(element), { includeElement: false })
-  // Before a comment exists there is no captured display, so name the thing
-  // the same way capture will: the component as a phrase, plus its text.
+  // Before a comment exists there is no captured label, so name the thing the
+  // same way capture will: the component as a phrase, plus its own words.
   const plainOf = (element: Element) => {
     const component = [...semanticOf(element).segments]
       .reverse()
@@ -120,11 +141,6 @@ export function FeedbackLayer(): ReactNode {
   }
 
   const hoveredRect = hovered?.getBoundingClientRect()
-  const hoveredLabel = hovered
-    ? details
-      ? pathOf(hovered).split(' > ').slice(-2).join(' > ')
-      : plainOf(hovered)
-    : ''
   const visual = threads.filter((thread) => thread.anchor.anchorType === 'visual-node')
 
   const submit = async (event: FormEvent) => {
@@ -132,12 +148,13 @@ export function FeedbackLayer(): ReactNode {
     const text = body.trim()
     if (!draft || !text || saving) return
     setSaving(true)
-    // The crop is captured before the thread exists, because the next rebuild
+    // The crop is captured before the comment exists, because the next version
     // may be the reason anyone ever looks at it.
     const crop = await captureCrop(draft.element)
+    // The pin landing is the confirmation. Throwing the panel open over the
+    // page she is still commenting on is not.
     const thread = commentOnElement(draft.element, text, { crop })
     selectThread(thread.id)
-    setPanelOpen(true)
     setBody('')
     setDraft(null)
     setSaving(false)
@@ -145,7 +162,7 @@ export function FeedbackLayer(): ReactNode {
 
   return createPortal(
     <div className="adl-root adl-overlay" {...{ [OVERLAY_ATTR]: '' }}>
-      {picking && hoveredRect ? (
+      {commenting && hoveredRect ? (
         <div
           className="adl-highlight"
           style={{
@@ -156,7 +173,7 @@ export function FeedbackLayer(): ReactNode {
           }}
         >
           <span className="adl-highlight-label">
-            {hoveredLabel || hovered?.tagName.toLowerCase()}
+            {plainOf(hovered!) || hovered!.tagName.toLowerCase()}
           </span>
         </div>
       ) : null}
@@ -166,6 +183,7 @@ export function FeedbackLayer(): ReactNode {
         if (!element) return null
         const rect = element.getBoundingClientRect()
         if (rect.width === 0 && rect.height === 0) return null
+        const trouble = plainStatus(thread.anchorStatus)
         return (
           <button
             key={thread.id}
@@ -175,7 +193,9 @@ export function FeedbackLayer(): ReactNode {
             data-thread-status={thread.status}
             data-selected={selectedThreadId === thread.id}
             style={{ left: rect.left, top: rect.top }}
-            title={thread.comments[0]?.body}
+            title={
+              trouble ? `${trouble.label} — ${thread.comments[0]?.body}` : thread.comments[0]?.body
+            }
             onClick={() => {
               selectThread(thread.id)
               setPanelOpen(true)
@@ -189,9 +209,10 @@ export function FeedbackLayer(): ReactNode {
       {draft ? (
         <form
           className="adl-composer"
+          aria-label="new comment"
           style={{
             left: clamp(draft.x, 12, window.innerWidth - 332),
-            top: clamp(draft.y + 12, 12, window.innerHeight - 200),
+            top: clamp(draft.y + 12, 12, window.innerHeight - 220),
           }}
           onSubmit={submit}
         >
@@ -208,7 +229,14 @@ export function FeedbackLayer(): ReactNode {
               onChange={(event) => setBody(event.target.value)}
             />
             <div className="adl-row" style={{ justifyContent: 'flex-end' }}>
-              <button type="button" className="adl-btn" onClick={() => setDraft(null)}>
+              <button
+                type="button"
+                className="adl-btn"
+                onClick={() => {
+                  setDraft(null)
+                  setBody('')
+                }}
+              >
                 Cancel
               </button>
               <button type="submit" className="adl-btn" data-variant="primary" disabled={saving}>

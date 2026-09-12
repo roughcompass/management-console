@@ -52,20 +52,25 @@ pnpm demo               # shell on :5273, remotes on :5274 and :5275
 Instrumentation is preview-only and off unless `DE_UI_PROVENANCE_ENABLED=true`;
 `pnpm verify:production` proves a production artifact carries none of it.
 
-In the preview: press **Comment on something**, click it, write a comment; a
-numbered pin stays on it and the panel names it the way the page does ("Status
-badge "Failed" in Payments"). Press **General feedback** for anything wider
-than one thing — spacing, form patterns, wording — which gets a topic instead
-of a pin. In the panel, **Close** what is dealt with and untick **Include when
-sent** on anything you want kept but not acted on yet; the **Send** view lists
-what will go and sends it (the shell records it in `localStorage` under
-`adl:submissions:<previewId>` and prints the digest — Phase 1 has no agent
-behind it). Then press **B · payments-dash 2.5.0 (rebuilt)**. Build B loads a
-different federated module: the same components after a refactor — new file,
-restructured markup, the summary card deleted, the version bumped. Watch what
-each comment does. **Technical details** in the panel header shows the paths,
-source references, anchor levels and the Network, Runtime and Build views
-behind all of it; see `docs/embedding.md` for who sees what.
+Open it and you are in comment mode, because that is what you came for: click
+anything on the page and say what should change. A numbered pin stays on it,
+and the panel names it the way the page does ("Status badge "Failed" in
+Payments"). **Comment on the whole page** covers anything wider than one thing
+— spacing, form patterns, wording. **Browse** hands the page back when you want
+to use it rather than talk about it.
+
+When you have said enough, **Request changes** shows exactly what will go, lets
+you hold anything back, and asks for the next version. Phase 1 has no agent
+behind that, so the shell has the next version on the shelf — payments-dash
+after a refactor: new file, restructured markup, the summary card deleted, the
+version bumped — and reveals it a moment later. Your comments follow the page
+into it, each saying whether it held, **Moved**, or is **Gone**. From
+**Versions** you keep it, go back to the one before, or approve it for
+deployment.
+
+**Technical details** in the panel header shows the paths, source references,
+anchor levels and the Network, Runtime and Build views behind all of it; see
+`docs/embedding.md` for who sees what.
 
 `pnpm test:e2e` runs that walkthrough in a real browser across the real
 federation boundary (needs `npx playwright install chromium`, or

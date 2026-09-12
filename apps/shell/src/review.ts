@@ -1,12 +1,13 @@
 import { adaptUiProvenanceManifest, createContextLock, mergeProvenanceManifests } from '@adl/anchor-core'
 import type { Actor, BuildReport, ContextLock, ProvenanceManifest } from '@adl/anchor-core'
 import { createLocalStorageRepository } from '@adl/feedback-store'
-import { PreviewRecorder, declareRuntimeEvents, mountFeedbackToolbar } from '@adl/feedback-ui'
-import type { FeedbackSubmission, FeedbackToolbarHandle } from '@adl/feedback-ui'
+import { PreviewRecorder, declareRuntimeEvents, mountFeedbackToolbar, versionLabel } from '@adl/feedback-ui'
+import type { ChangeRequest, FeedbackToolbarHandle, ReviewVersion } from '@adl/feedback-ui'
 import { getProvenanceRuntime } from '@de/ui-provenance/runtime'
+import { BUILDS } from './previews'
 import type { PreviewBuild } from './previews'
 import { onRemoteLoaded } from './remotes'
-import { onPreviewChange, selectedPreview } from './review-bridge'
+import { selectPreview, selectedPreview } from './review-bridge'
 
 /**
  * The whole review layer, in one module nothing in the application imports
@@ -20,12 +21,12 @@ export interface StartReviewOptions {
   actor: Actor
   /** Application events the recorder should treat as runtime activity. */
   runtimeEvents: readonly string[]
-  mode?: 'light' | 'dark'
+  theme?: 'light' | 'dark'
 }
 
 const locks = new Map<string, ContextLock>()
 
-/** One lock per pinned build: its id is what staleness is measured against. */
+/** One lock per version: its id is what staleness is measured against. */
 function lockFor(build: PreviewBuild): ContextLock {
   const existing = locks.get(build.id)
   if (existing) return existing
@@ -75,20 +76,38 @@ function readBuilds(): { manifest: ProvenanceManifest; report: BuildReport } | u
   }
 }
 
+/**
+ * Phase 1 has no agent behind the toolbar, and the next version is already on
+ * the shelf: BUILDS[1] is payments-dash after a refactor. So a change request
+ * is recorded where the comments are, and then the version it would have
+ * produced is revealed. Everything the reviewer does with it after that - keep
+ * it, go back, approve it - is real.
+ */
+const BUILD_MS = 1200
+
+const revealedAt = new Map<string, string>()
+const addressing = new Map<string, readonly string[]>()
+let revealed = 1
+
+function versions(): ReviewVersion[] {
+  return BUILDS.slice(0, revealed).map((build, index) => ({
+    id: build.id,
+    label: versionLabel(index),
+    createdAt: revealedAt.get(build.id) ?? new Date().toISOString(),
+    addressing: addressing.get(build.id),
+  }))
+}
+
+function recordRequest(previewId: string, request: ChangeRequest): void {
+  const key = `adl:requests:${previewId}`
+  const prior = JSON.parse(localStorage.getItem(key) ?? '[]') as ChangeRequest[]
+  localStorage.setItem(key, JSON.stringify([...prior, request]))
+  console.info(`[review] change request ${request.id}\n${request.brief}`)
+}
+
 export interface ReviewSession {
   recorder: PreviewRecorder
   stop(): void
-}
-
-/**
- * Phase 1 has no agent behind the toolbar. The packet goes where the threads
- * already go, so the phase that adds one reads it from the same place.
- */
-function recordSubmission(previewId: string, submission: FeedbackSubmission): void {
-  const key = `adl:submissions:${previewId}`
-  const prior = JSON.parse(localStorage.getItem(key) ?? '[]') as FeedbackSubmission[]
-  localStorage.setItem(key, JSON.stringify([...prior, submission]))
-  console.info(`[review] feedback sent as ${submission.id}\n${submission.digest}`)
 }
 
 export async function startReview(options: StartReviewOptions): Promise<ReviewSession> {
@@ -99,7 +118,25 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
   recorder.start()
 
   const build = selectedPreview()
-  const handle: FeedbackToolbarHandle = await mountFeedbackToolbar({
+  revealedAt.set(build.id, new Date().toISOString())
+
+  let handle: FeedbackToolbarHandle | undefined
+
+  const push = () => {
+    const current = selectedPreview()
+    const registered = readBuilds()
+    handle?.update({
+      lock: lockFor(current),
+      buildId: current.id,
+      label: current.label,
+      remotes: remotesOf(current),
+      versions: versions(),
+      manifest: registered?.manifest,
+      buildReport: registered?.report,
+    })
+  }
+
+  handle = await mountFeedbackToolbar({
     previewRoot: options.previewRoot,
     actor: options.actor,
     previewId: options.previewId,
@@ -107,28 +144,42 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
     buildId: build.id,
     label: build.label,
     remotes: remotesOf(build),
+    versions: versions(),
     repository: createLocalStorageRepository(),
     recorder,
     captureCrops: true,
-    mode: options.mode ?? 'dark',
-    onSubmit: (submission) => recordSubmission(options.previewId, submission),
+    theme: options.theme ?? 'dark',
+
+    onViewVersion(versionId) {
+      const next = BUILDS.find((entry) => entry.id === versionId)
+      if (next) selectPreview(next)
+    },
+
+    async onRequestChanges(request) {
+      recordRequest(options.previewId, request)
+      if (revealed >= BUILDS.length) return
+      const next = BUILDS[revealed]!
+      await new Promise((resolve) => setTimeout(resolve, BUILD_MS))
+      revealed += 1
+      revealedAt.set(next.id, new Date().toISOString())
+      addressing.set(
+        next.id,
+        request.comments.map((comment) => comment.commentId),
+      )
+      selectPreview(next)
+      push()
+    },
+
+    onApprove(version) {
+      localStorage.setItem(
+        `adl:approved:${options.previewId}`,
+        JSON.stringify({ versionId: version.id, at: version.approvedAt }),
+      )
+      console.info(`[review] ${version.label} approved for deployment`)
+    },
   })
 
-  const push = () => {
-    const current = selectedPreview()
-    const registered = readBuilds()
-    handle.update({
-      lock: lockFor(current),
-      buildId: current.id,
-      label: current.label,
-      remotes: remotesOf(current),
-      manifest: registered?.manifest,
-      buildReport: registered?.report,
-    })
-  }
-
   push()
-  const unsubscribePreview = onPreviewChange(push)
   const unsubscribeRemote = onRemoteLoaded(push)
   // Registration is asynchronous and driven by federation, not by React.
   const timer = setInterval(push, 1000)
@@ -136,10 +187,9 @@ export async function startReview(options: StartReviewOptions): Promise<ReviewSe
   return {
     recorder,
     stop() {
-      unsubscribePreview()
       unsubscribeRemote()
       clearInterval(timer)
-      handle.destroy()
+      handle?.destroy()
     },
   }
 }

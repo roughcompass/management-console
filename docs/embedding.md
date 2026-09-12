@@ -21,8 +21,14 @@ const toolbar = await mountFeedbackToolbar({
   repository,                // optional, persistence
   recorder,                  // optional, share one with the Frame
   captureCrops: true,
-  mode: 'dark',
-  onSubmit: (submission) => sendToYourAgent(submission), // optional
+  theme: 'dark',
+
+  // The review loop. Without these the toolbar still collects feedback; it
+  // just has nowhere to send it and one version to show.
+  versions,                                        // oldest first; buildId is the one on screen
+  onViewVersion: (id) => host.showBuild(id),
+  onRequestChanges: async (request) => host.buildNext(request),
+  onApprove: (version) => host.markReadyToDeploy(version),
 })
 ```
 
@@ -35,6 +41,32 @@ so the Frame's own chrome is not commentable.
 
 `toolbar.update({ lock, buildId, manifest, ... })` swaps the pinned inputs and
 re-anchors the open set. `toolbar.destroy()` removes it.
+
+## The loop it is shaped around
+
+Someone follows a link, sees an application, and wants it changed. That is the
+whole product, and the toolbar is shaped around those four steps rather than
+around the anchoring machinery underneath them:
+
+1. **Say what is wrong.** Comment mode is on when the page loads, because she
+   came here to comment: a click on anything is a comment on it, and the
+   composer opens where she clicked. **Browse** hands the page back when she
+   wants to use it rather than talk about it. Feedback wider than one thing —
+   spacing, form patterns, wording — goes in as a comment on the whole page.
+2. **Talk about it.** Every comment takes replies, and is marked done when it
+   is dealt with. Done comments are never sent.
+3. **Ask for the next version.** **Request changes** shows exactly what will go
+   and lets her hold anything back, then hands the host a `ChangeRequest`. Her
+   comments follow the page into the version that comes back, each one saying
+   whether it held, moved, or is gone.
+4. **Keep it or don't.** From **Versions** she goes back to the one before, or
+   approves it for deployment.
+
+Steps 3 and 4 need a host: `onRequestChanges` builds the next version and
+resolves once it is on screen, `onViewVersion` puts an existing one back up,
+and `onApprove` records the decision. A host that passes none of them gets a
+toolbar that collects feedback and has nowhere to send it, which is a
+reasonable thing to want and the reason they are optional.
 
 ## Two people read it
 
@@ -50,11 +82,11 @@ By default the toolbar names things the way the page does. A comment is on
 **Status badge "Failed" in Payments**, not on
 `MFE[payments-dash] > PositionsTable > StatusBadge`; the label is captured with
 the anchor from the component name, the node's visible text and the heading of
-the section it sits in. Only trouble gets a status — **Best match** when the
-thing moved and the toolbar found the closest match, **Not in this build** when
-it could not — and a comment that is where it was left shows none. The panel
-has two views, **Comments** and **Send**, and the numbers in its header are the
-ones a reviewer acts on: open, and to send.
+the section it sits in. Only trouble gets a status — **Moved** when the thing
+changed and the toolbar found the closest match, **Gone** when it is not on the
+page any more — and a comment that is still where it was left shows none. The
+panel has two views, **Comments** and **Versions**, and nothing in it is
+measured in anchors, locks or builds.
 
 **Technical details**, in the panel header, turns on the engineering layer
 everywhere at once and is remembered per reviewer: semantic paths, source file
@@ -67,34 +99,29 @@ The packet that leaves carries both: each thread has a plain `label` and the
 technical `where`, `provenance` and anchor fields, and the digest prints the
 label first.
 
-## What leaves it
+## What a change request carries
 
-Comments accumulate until a reviewer decides what the next build should act on.
-Every open thread is in the next submission unless the reviewer unticks
-**send to agent** on it; a closed thread never is. The **Submit** tab shows the
-packet before it goes — as text, because that is what the reviewer reads and
-what an agent reads — and sending it calls `onSubmit` with a
-`FeedbackSubmission`:
+Every open comment is in the next request unless the reviewer unticks it in
+**Request changes**; a comment marked done never is. She reads the brief before
+it goes, and sending hands `onRequestChanges` a `ChangeRequest`:
 
-- `threads` — the threads being sent, each with its anchor type, current
-  anchor status and level, its location (semantic path, or the target for a
-  network, runtime, build or general anchor), the provenance reference when
-  there is one, and every comment with its author's role;
-- `leftOut` — ids of open threads the reviewer chose not to send, so whatever
-  is on the other end does not go looking for them;
-- `lock` and `buildId` — what the feedback was written against;
-- `digest` — the same thing as text, element feedback first with its location,
-  then feedback about the preview as a whole, then network, runtime and build.
+- `comments` — what she is asking for, each with a plain `label`, its anchor
+  type, current anchor status and level, its location (semantic path, or the
+  target for a network, runtime, build or whole-page anchor), the provenance
+  reference when there is one, and every reply with its author's role;
+- `notIncluded` — ids of open comments she chose to hold back, so whatever is
+  on the other end does not go looking for them;
+- `fromVersion` and `lock` — the version the feedback was written against;
+- `brief` — the same thing as text: feedback on parts of the page first with
+  its location, then feedback about the whole page, then network, runtime and
+  build.
 
-General feedback (**General feedback** in the dock) is a thread with a
-`general` anchor and a topic — spacing, forms, navigation, content,
-accessibility, other. It has no node to pin to, resolves on every build, and
-sits in its own section of the digest, because it is not asking for a change
-at one place.
+A whole-page comment is one with a `general` anchor and a topic. It has no node
+to pin to, resolves on every version, and sits in its own section of the brief,
+because it is not asking for a change at one place.
 
-Sending changes nothing about the threads: they stay open until the next build
-is pinned, re-anchor against it, and the reviewer closes what it fixed. Without
-an `onSubmit`, sending records the packet in the panel and goes no further.
+Asking changes nothing about the comments themselves: they stay open, follow
+the page into the next version, and the reviewer marks done the ones it fixed.
 
 ## What it puts in the page
 

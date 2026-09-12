@@ -27,7 +27,7 @@ if (REVIEW_ENABLED) {
     previewId: PREVIEW_ID,
     actor: REVIEWER,
     runtimeEvents: RUNTIME_EVENTS,
-    mode: 'dark',
+    theme: 'dark',
   })
 }
 

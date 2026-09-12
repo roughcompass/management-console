@@ -22,9 +22,11 @@ import type { FeedbackRepository, PreviewVersion } from '@adl/feedback-store'
 import { recordPreviewVersion } from '@adl/feedback-store'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
+import { buildChangeRequest } from './change-request.js'
+import type { ChangeRequest } from './change-request.js'
 import { PreviewRecorder } from './instrumentation.js'
-import { buildSubmission } from './submission.js'
-import type { FeedbackSubmission } from './submission.js'
+import { isLatest, versionLabel } from './versions.js'
+import type { ReviewVersion } from './versions.js'
 
 export interface RefreshInput {
   lock?: ContextLock
@@ -35,6 +37,13 @@ export interface RefreshInput {
   /** False re-resolves without metering. Defaults to true. */
   record?: boolean
 }
+
+/**
+ * Comment mode is where a reviewer starts: she followed a link to look at the
+ * page and say what is wrong with it, so clicking means commenting until she
+ * says otherwise. Browse hands the page back so she can use it.
+ */
+export type ReviewMode = 'comment' | 'browse'
 
 export interface FeedbackContextValue {
   actor: Actor
@@ -49,13 +58,13 @@ export interface FeedbackContextValue {
   recorder: PreviewRecorder
   threads: CommentThread[]
   metrics: OrphanSnapshot
-  picking: boolean
-  setPicking(value: boolean): void
+  mode: ReviewMode
+  setMode(value: ReviewMode): void
   panelOpen: boolean
   setPanelOpen(value: boolean): void
   /**
-   * The engineering layer: paths, source refs, anchor levels, the lock, the
-   * Network/Runtime/Build views. Off by default; remembered per reviewer.
+   * The engineering layer: paths, source references, anchor levels, the lock,
+   * and the Network, Runtime and Build views. Off by default; remembered.
    */
   details: boolean
   setDetails(value: boolean): void
@@ -70,26 +79,35 @@ export interface FeedbackContextValue {
     options?: { layerHint?: Layer; crop?: string },
   ): CommentThread
   commentOnTarget(target: NonVisualTarget, body: string, options?: { layerHint?: Layer }): CommentThread
-  /** Feedback about the preview as a whole, not any one node. */
+  /** Feedback about the whole page, not any one part of it. */
   commentGeneral(topic: string, body: string): CommentThread
   reply(threadId: string, body: string): void
   setThreadStatus(threadId: string, status: CommentThread['status']): void
-  /** Open threads the reviewer has left out of the next submission. */
+
+  // The versions of the page, and where the reviewer is in them.
+  versions: ReviewVersion[]
+  currentVersion: ReviewVersion
+  onLatestVersion: boolean
+  viewVersion(id: string): void
+  approveCurrentVersion(): Promise<void>
+
+  // Open comments she has left out of the next request.
   excludedThreadIds: ReadonlySet<string>
   setIncluded(threadId: string, included: boolean): void
-  /** Open and not left out: exactly what submit() sends. */
+  /** Open and not left out: exactly what Request changes sends. */
   includedThreads: CommentThread[]
-  /** The packet submit() would send right now, for the reviewer to read first. */
-  previewSubmission(): FeedbackSubmission
-  submit(): Promise<FeedbackSubmission>
-  lastSubmission: FeedbackSubmission | null
+  /** The request that would go right now, for her to read first. */
+  draftRequest(): ChangeRequest
+  requestChanges(): Promise<ChangeRequest>
+  requesting: boolean
+  lastRequest: ChangeRequest | null
 }
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null)
 
 export interface FeedbackProviderProps {
   actor: Actor
-  /** Stable across preview versions. Threads belong to it, not to a build. */
+  /** Stable across versions. Comments belong to it, not to a build. */
   previewId: string
   lock: ContextLock
   manifest?: ProvenanceManifest
@@ -106,13 +124,26 @@ export interface FeedbackProviderProps {
   captureCrops?: boolean | ScreenshotOptions
   /** How long the preview DOM must be quiet before a metered pass runs. */
   settleMs?: number
-  /** Where a submission goes. The toolbar does not know what is on the other end. */
-  onSubmit?: (submission: FeedbackSubmission) => void | Promise<void>
+  /** Where the reviewer starts. Defaults to comment. */
+  initialMode?: ReviewMode
+  /**
+   * Every version of the page so far, oldest first. Their ids are the host's
+   * build ids; `buildId` says which one is on screen.
+   */
+  versions?: readonly ReviewVersion[]
+  /** Put a version on screen. The host swaps the build and calls update(). */
+  onViewVersion?: (versionId: string) => void
+  /**
+   * Take the request and build the next version. Resolves when that version is
+   * on screen, so the toolbar can say "building" until it is.
+   */
+  onRequestChanges?: (request: ChangeRequest) => void | Promise<void>
+  onApprove?: (version: ReviewVersion) => void | Promise<void>
   children: ReactNode
 }
 
-function submissionId(): string {
-  return `sub_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+function requestId(): string {
+  return `req_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 }
 
 const DETAILS_KEY = 'adl:details'
@@ -126,7 +157,7 @@ function readDetails(): boolean {
 }
 
 export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
-  const { actor, lock, manifest, buildReport, previewRef, previewId, repository, onSubmit } = props
+  const { actor, lock, manifest, buildReport, previewRef, previewId, repository } = props
 
   const store = useMemo(
     () => props.store ?? new FeedbackStore({ lock, buildId: props.buildId }),
@@ -140,12 +171,16 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
   const ctxRef = useRef<ResolutionContext | null>(null)
   const elementsRef = useRef(new Map<string, Element>())
   const [version, setVersion] = useState(0)
-  const [picking, setPicking] = useState(false)
+  const [mode, setMode] = useState<ReviewMode>(props.initialMode ?? 'comment')
   const [panelOpen, setPanelOpen] = useState(false)
   const [details, setDetailsState] = useState(readDetails)
   const [selectedThreadId, selectThread] = useState<string | null>(null)
   const [excludedThreadIds, setExcluded] = useState<ReadonlySet<string>>(() => new Set())
-  const [lastSubmission, setLastSubmission] = useState<FeedbackSubmission | null>(null)
+  const [approvals, setApprovals] = useState<ReadonlyMap<string, { at: string; by: Actor }>>(
+    () => new Map(),
+  )
+  const [requesting, setRequesting] = useState(false)
+  const [lastRequest, setLastRequest] = useState<ChangeRequest | null>(null)
 
   const bump = useCallback(() => setVersion((v) => v + 1), [])
 
@@ -242,7 +277,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       return true
     }
 
-    // The Frame mounts the toolbar before the preview root has content, and
+    // The host mounts the toolbar before the preview root has content, and
     // sometimes before it exists at all.
     if (!attach()) poll = setInterval(() => attach() && poll && clearInterval(poll), 100)
 
@@ -269,7 +304,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       const ctx = buildContext(lock, manifest)
       const anchor = captureAnchor(element, ctx, { crop: options.crop })
       const thread = store.createThread({ anchor, author: actor, body, layerHint: options.layerHint })
-      // Resolve once against the build it was written on, so the thread shows
+      // Resolve once against the version it was written on, so the comment shows
       // which level is carrying it from the moment it is created.
       thread.resolution = resolveAnchor(anchor, ctx)
       thread.anchorStatus = thread.resolution.status
@@ -341,28 +376,73 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [threads, excludedThreadIds],
   )
 
-  const previewSubmission = useCallback<FeedbackContextValue['previewSubmission']>(
+  // A host that says nothing about versions still has one: what is on screen.
+  const versions = useMemo<ReviewVersion[]>(() => {
+    const given =
+      props.versions && props.versions.length > 0
+        ? [...props.versions]
+        : [
+            {
+              id: props.buildId ?? lock.id,
+              label: versionLabel(0),
+              createdAt: lock.createdAt,
+            },
+          ]
+    return given.map((entry) => {
+      const approval = approvals.get(entry.id)
+      return approval ? { ...entry, approvedAt: approval.at, approvedBy: approval.by } : entry
+    })
+  }, [approvals, lock.createdAt, lock.id, props.buildId, props.versions])
+
+  const currentVersionId = props.buildId ?? lock.id
+  const currentVersion = useMemo(
+    () => versions.find((entry) => entry.id === currentVersionId) ?? versions[versions.length - 1]!,
+    [currentVersionId, versions],
+  )
+  const onLatestVersion = isLatest(versions, currentVersionId)
+
+  const viewVersion = useCallback(
+    (id: string) => {
+      if (id !== currentVersionId) props.onViewVersion?.(id)
+    },
+    [currentVersionId, props],
+  )
+
+  const approveCurrentVersion = useCallback(async () => {
+    const at = new Date().toISOString()
+    setApprovals((prev) => new Map(prev).set(currentVersion.id, { at, by: actor }))
+    await props.onApprove?.({ ...currentVersion, approvedAt: at, approvedBy: actor })
+  }, [actor, currentVersion, props])
+
+  const draftRequest = useCallback<FeedbackContextValue['draftRequest']>(
     () =>
-      buildSubmission({
-        id: submissionId(),
+      buildChangeRequest({
+        id: requestId(),
         now: new Date().toISOString(),
         actor,
         previewId,
+        fromVersion: { id: currentVersion.id, label: currentVersion.label },
         lock,
-        buildId: props.buildId ?? lock.id,
         included: includedThreads,
-        leftOut: threads.filter((thread) => thread.status === 'open' && excludedThreadIds.has(thread.id)),
-        closed: threads.filter((thread) => thread.status !== 'open'),
+        notIncluded: threads.filter(
+          (thread) => thread.status === 'open' && excludedThreadIds.has(thread.id),
+        ),
+        done: threads.filter((thread) => thread.status !== 'open'),
       }),
-    [actor, excludedThreadIds, includedThreads, lock, previewId, props.buildId, threads],
+    [actor, currentVersion, excludedThreadIds, includedThreads, lock, previewId, threads],
   )
 
-  const submit = useCallback<FeedbackContextValue['submit']>(async () => {
-    const submission = previewSubmission()
-    await onSubmit?.(submission)
-    setLastSubmission(submission)
-    return submission
-  }, [onSubmit, previewSubmission])
+  const requestChanges = useCallback<FeedbackContextValue['requestChanges']>(async () => {
+    const request = draftRequest()
+    setRequesting(true)
+    try {
+      await props.onRequestChanges?.(request)
+      setLastRequest(request)
+      return request
+    } finally {
+      setRequesting(false)
+    }
+  }, [draftRequest, props])
 
   const value = useMemo<FeedbackContextValue>(
     () => ({
@@ -377,8 +457,8 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       recorder,
       threads,
       metrics: store.meter.snapshot(store.buildId),
-      picking,
-      setPicking,
+      mode,
+      setMode,
       panelOpen,
       setPanelOpen,
       details,
@@ -393,42 +473,54 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       commentGeneral,
       reply,
       setThreadStatus,
+      versions,
+      currentVersion,
+      onLatestVersion,
+      viewVersion,
+      approveCurrentVersion,
       excludedThreadIds,
       setIncluded,
       includedThreads,
-      previewSubmission,
-      submit,
-      lastSubmission,
+      draftRequest,
+      requestChanges,
+      requesting,
+      lastRequest,
     }),
     [
       actor,
+      approveCurrentVersion,
       buildReport,
       captureCrop,
       commentGeneral,
       commentOnElement,
       commentOnTarget,
+      currentVersion,
       details,
+      draftRequest,
       excludedThreadIds,
       includedThreads,
-      lastSubmission,
+      lastRequest,
       lock,
       manifest,
+      mode,
+      onLatestVersion,
       panelOpen,
-      picking,
       previewId,
       previewRef,
-      previewSubmission,
       props.overlayContainer,
       recorder,
       refresh,
       reply,
+      requestChanges,
+      requesting,
       selectedThreadId,
       setDetails,
       setIncluded,
       setThreadStatus,
       store,
-      submit,
       threads,
+      versions,
+      viewVersion,
     ],
   )
 

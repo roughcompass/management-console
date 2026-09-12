@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
+import { closePanel, comment, openPanel, requestNextVersion } from './helpers'
 
 // The third row is the failed settlement, so the comment on it is one a
 // reviewer of a Salt application would actually write.
@@ -9,8 +9,8 @@ const THREAD = '.adl-thread'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
-  // Threads persist across reloads, so each test starts from a clean preview.
-  // These tests read the engineering layer (paths, levels, the lock diff),
+  // Comments persist across reloads, so each test starts from a clean page.
+  // These tests also read the engineering layer (paths, levels, the lock diff),
   // which a reviewer turns on once and the toolbar remembers.
   await page.evaluate(() => {
     localStorage.clear()
@@ -19,19 +19,6 @@ test.beforeEach(async ({ page }) => {
   await page.reload()
   await page.waitForSelector('[data-mfe="payments-dash"] tbody tr')
 })
-
-async function comment(page: Page, selector: string, body: string) {
-  await page.getByRole('button', { name: 'Comment on something' }).click()
-  await page.locator(selector).first().click({ force: true })
-  await page.locator('.adl-composer textarea').fill(body)
-  await page.locator('.adl-composer').getByRole('button', { name: 'Comment' }).click()
-  await expect(page.locator('.adl-composer')).toHaveCount(0)
-}
-
-async function rebuild(page: Page) {
-  await page.getByRole('radio', { name: /payments-dash 2\.5\.0/ }).click()
-  await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible()
-}
 
 test('mounts two federated remotes under one instrumented Frame', async ({ page }) => {
   await expect(page.locator('[data-mfe="payments-dash"]')).toBeVisible()
@@ -46,15 +33,20 @@ test('mounts two federated remotes under one instrumented Frame', async ({ page 
   ).toBeVisible()
 })
 
-test('anchors a comment to a node inside a remote', async ({ page }) => {
+test('a click on the page is a comment, with no mode to arm first', async ({ page }) => {
   await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
 
   const pin = page.locator('.adl-pin')
   await expect(pin).toHaveCount(1)
   await expect(pin).toHaveAttribute('data-status', 'resolved')
+
+  await openPanel(page)
+  // What she sees is the thing in the words of the page.
+  await expect(page.locator(`${THREAD} .adl-thread-title`).first()).toHaveText(
+    'Status badge “Failed” in Payments',
+  )
   // The path crosses the federation boundary: Frame and zone from the host
-  // contract, components from the remote's own build. PositionsTable appears
-  // now that the Salt table rows are instrumented too.
+  // contract, components from the remote's own build.
   await expect(page.locator(`${THREAD} .adl-mono`).first()).toHaveText(
     'Frame[cib-frame]@3.1 > Zone[main] > MFE[payments-dash]@2.4.1 > PaymentsDash > PositionsTable > StatusBadge',
   )
@@ -63,42 +55,59 @@ test('anchors a comment to a node inside a remote', async ({ page }) => {
   await expect(page.locator(`${THREAD} .adl-mono`).nth(1)).toContainText('payments-web · src/v1/')
 })
 
-test('carries a comment across a remote version bump and says how it held', async ({ page }) => {
+test('carries a comment into the version it asked for, and says how it held', async ({ page }) => {
   await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
-  await rebuild(page)
+  await requestNextVersion(page)
 
   const thread = page.locator(THREAD).first()
   await expect(thread.getByText('a failed settlement is an error, not a caution')).toBeVisible()
   // 2.5.0 is a different module, so the emitted source id from 2.4.1 is gone.
   // The component name and the authored instance key carry the anchor instead,
-  // which is a weaker claim than an exact id match - so the thread says
-  // degraded rather than pretending nothing moved.
-  // With details on, a thread in trouble carries the reviewer's chip and the
-  // technical one; either will do.
-  await expect(thread.locator('.adl-chip[data-status="degraded"]').first()).toBeVisible()
+  // which is a weaker claim than an exact id match - so the comment says it
+  // moved rather than pretending nothing did.
+  await expect(thread.getByText('Moved')).toBeVisible()
   await expect(thread).toContainText('provenance · 0.75')
   await expect(thread.locator('.adl-stale')).toContainText('mfes.payments-dash: 2.4.1 → 2.5.0')
   await expect(page.locator('.adl-pin')).toHaveCount(1)
 })
 
-test('orphans a comment on a node the rebuild removed, with the crop to show what it was', async ({
-  page,
-}) => {
+test('says a comment is gone when the new version removed what it was on', async ({ page }) => {
   await comment(page, SUMMARY_CARD, 'this card is too quiet')
-  await rebuild(page)
+  await requestNextVersion(page)
 
   const thread = page.locator(THREAD).first()
-  await expect(thread.locator('.adl-chip[data-status="orphaned"]').first()).toBeVisible()
-  await expect(page.getByText("1 comment can't find what it was about in this build")).toBeVisible()
-  await expect(page.locator('.adl-metric', { hasText: 'ORPHAN RATE' })).toContainText('100%')
+  await expect(thread.getByText('Gone')).toBeVisible()
+  await expect(thread.getByText('This is not on the page in this version.')).toBeVisible()
   await expect(page.locator('.adl-pin')).toHaveCount(0)
-  // An orphan the reviewer cannot recognise is an orphan nobody triages.
+  // A comment whose subject she cannot recognise is one nobody can triage.
   await expect(thread.locator('img.adl-crop')).toBeVisible()
   await expect(thread.getByText(/why \(5 levels tried\)/)).toBeVisible()
 })
 
+test('keeps and reverts versions from the Versions view', async ({ page }) => {
+  await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
+  await requestNextVersion(page)
+
+  await page.getByRole('tab', { name: 'Versions' }).click()
+  await expect(page.getByText("You're viewing this")).toBeVisible()
+  await expect(page.getByText(/Built from 1 comment/)).toBeVisible()
+
+  // Wrong? Back to what she had, and the page really goes back.
+  await page.getByRole('button', { name: 'Go back to Version 1' }).click()
+  await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.4.1"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Back to Version 2' })).toBeVisible()
+
+  // Right? Approve it, and it is marked ready to deploy.
+  await page.getByRole('button', { name: 'Back to Version 2' }).click()
+  await expect(page.locator('[data-mfe="payments-dash"][data-mfe-version="2.5.0"]')).toBeVisible()
+  await page.getByRole('tab', { name: 'Versions' }).click()
+  await page.getByRole('button', { name: 'Approve for deployment' }).click()
+  await expect(page.getByText('Ready to deploy')).toBeVisible()
+  await expect(page.getByText(/Approved by Dana Whitfield/)).toBeVisible()
+})
+
 test('captures feedback on things that are not on screen', async ({ page }) => {
-  await page.getByRole('button', { name: /^Comments \(/ }).click()
+  await openPanel(page)
   await page.getByRole('tab', { name: 'Network' }).click()
   const request = page
     .locator('.adl-panel-body .adl-card', { hasText: '/api/accounts/:id/positions' })
@@ -130,18 +139,19 @@ test('captures feedback on things that are not on screen', async ({ page }) => {
     'network-interaction · GET /api/accounts/:id/positions',
   )
 
-  // A non-visual anchor does not depend on any DOM surviving the rebuild.
-  await rebuild(page)
-  await expect(thread.locator('.adl-chip[data-status="resolved"]')).toBeVisible()
+  // A non-visual anchor does not depend on any DOM surviving the new version.
+  await requestNextVersion(page)
+  await expect(thread.locator('.adl-chip[data-status="resolved"]').first()).toBeVisible()
 })
 
-test('keeps threads across a reload of the preview', async ({ page }) => {
+test('keeps comments across a reload of the page', async ({ page }) => {
   await comment(page, FAILED_STATUS, 'a failed settlement is an error, not a caution')
+  await closePanel(page)
   await page.reload()
   await page.waitForSelector('[data-mfe="payments-dash"] tbody tr')
 
-  await page.getByRole('button', { name: /^Comments \(/ }).click()
+  await openPanel(page)
   const thread = page.locator(THREAD).first()
   await expect(thread.getByText('a failed settlement is an error, not a caution')).toBeVisible()
-  await expect(thread.locator('.adl-chip[data-status="resolved"]')).toBeVisible()
+  await expect(thread.locator('.adl-chip[data-status="resolved"]').first()).toBeVisible()
 })

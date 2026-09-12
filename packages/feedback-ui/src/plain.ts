@@ -36,7 +36,7 @@ export function describeAnchor(anchor: AnchorDescriptor): string {
   if (!target) return 'Something that is not on screen'
   switch (target.kind) {
     case 'general':
-      return `${capitalize(target.topic)} — about the whole preview`
+      return `${capitalize(target.topic)} — about the whole page`
     case 'network':
       return `The request ${target.method} ${target.urlPattern}`
     case 'runtime-event':
@@ -55,13 +55,13 @@ export function plainStatus(status: AnchorStatus): { label: string; hint: string
       return null
     case 'degraded':
       return {
-        label: 'Best match',
-        hint: 'What this comment was on has changed; this is the closest thing in this build.',
+        label: 'Moved',
+        hint: 'This changed in a newer version. The pin is on the closest match.',
       }
     case 'orphaned':
       return {
-        label: 'Not in this build',
-        hint: 'What this comment was on could not be found in this build.',
+        label: 'Gone',
+        hint: 'This is not on the page in this version.',
       }
   }
 }
