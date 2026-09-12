@@ -6,10 +6,14 @@ const V2_FILE = 'src/mfes/payments/v2/PaymentsDash.tsx'
 
 export const manifestV1: ProvenanceManifest = {
   version: 1,
-  repo: 'roughcompass/management-console',
-  commit: 'a41c9ef',
-  buildId: 'build-a',
-  modules: { m1: { file: V1_FILE } },
+  scopes: {
+    'payments-dash': {
+      repo: 'roughcompass/management-console',
+      commit: 'a41c9ef',
+      buildId: 'build-a',
+    },
+  },
+  modules: { m1: { file: V1_FILE, scope: 'payments-dash' } },
   nodes: {
     'm1:9:5': { module: 'm1', component: 'StatusBadge', element: 'span', line: 9, column: 5 },
     'm1:21:11': { module: 'm1', component: 'PositionsTable', element: 'tr', line: 21, column: 11 },
@@ -21,10 +25,14 @@ export const manifestV1: ProvenanceManifest = {
 
 export const manifestV2: ProvenanceManifest = {
   version: 1,
-  repo: 'roughcompass/management-console',
-  commit: '7d20b13',
-  buildId: 'build-b',
-  modules: { m2: { file: V2_FILE } },
+  scopes: {
+    'payments-dash': {
+      repo: 'roughcompass/management-console',
+      commit: '7d20b13',
+      buildId: 'build-b',
+    },
+  },
+  modules: { m2: { file: V2_FILE, scope: 'payments-dash' } },
   nodes: {
     'm2:14:5': { module: 'm2', component: 'StatusBadge', element: 'span', line: 14, column: 5 },
     'm2:29:13': { module: 'm2', component: 'PositionsTable', element: 'tr', line: 29, column: 13 },

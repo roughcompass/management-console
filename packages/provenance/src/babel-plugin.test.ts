@@ -5,7 +5,12 @@ import { createBabelPlugin } from './babel-plugin.js'
 import { ManifestCollector } from './collector.js'
 
 function transform(code: string, filename = '/repo/src/PaymentsDash.jsx') {
-  const collector = new ManifestCollector({ repo: 'roughcompass/management-console', commit: 'a41c9ef', buildId: 'build-a' })
+  const collector = new ManifestCollector({
+    scope: 'payments-dash',
+    repo: 'roughcompass/management-console',
+    commit: 'a41c9ef',
+    buildId: 'build-a',
+  })
   const result = transformSync(code, {
     filename,
     cwd: '/repo',
@@ -69,12 +74,17 @@ describe('provenance babel plugin', () => {
 
   it('records repo-relative paths and 1-based positions', () => {
     const { manifest } = transform(SOURCE)
-    expect(Object.values(manifest.modules)).toEqual([{ file: 'src/PaymentsDash.jsx' }])
+    expect(Object.values(manifest.modules)).toEqual([
+      { file: 'src/PaymentsDash.jsx', scope: 'payments-dash' },
+    ])
     const span = Object.values(manifest.nodes).find((node) => node.element === 'span')!
     expect(span.line).toBe(3)
     expect(span.column).toBeGreaterThan(0)
-    expect(manifest.repo).toBe('roughcompass/management-console')
-    expect(manifest.commit).toBe('a41c9ef')
+    expect(manifest.scopes['payments-dash']).toEqual({
+      repo: 'roughcompass/management-console',
+      commit: 'a41c9ef',
+      buildId: 'build-a',
+    })
   })
 
   it('never instruments dependencies', () => {
@@ -97,20 +107,26 @@ describe('provenance babel plugin', () => {
 
 describe('manifest collector', () => {
   it('gives the same file the same module id every build', () => {
-    const a = new ManifestCollector({ repo: 'r', commit: '1' })
-    const b = new ManifestCollector({ repo: 'r', commit: '2' })
+    const a = new ManifestCollector({ scope: 'payments-dash', repo: 'r', commit: '1' })
+    const b = new ManifestCollector({ scope: 'payments-dash', repo: 'r', commit: '2' })
     expect(a.moduleId('src/App.tsx')).toBe(b.moduleId('src/App.tsx'))
     expect(a.moduleId('src/App.tsx')).not.toBe(a.moduleId('src/Other.tsx'))
+
+    // Two remotes shipping the same path must not collide once merged.
+    const other = new ManifestCollector({ scope: 'limits-panel', repo: 'r', commit: '1' })
+    expect(other.moduleId('src/App.tsx')).not.toBe(a.moduleId('src/App.tsx'))
   })
 
   it('forgets a module so a hot update cannot leave stale nodes behind', () => {
-    const collector = new ManifestCollector({ repo: 'r', commit: '1' })
+    const collector = new ManifestCollector({ scope: 'payments-dash', repo: 'r', commit: '1' })
     collector.record({ file: 'src/A.tsx', component: 'A', element: 'div', line: 1, column: 1 })
     collector.record({ file: 'src/B.tsx', component: 'B', element: 'span', line: 2, column: 3 })
     expect(collector.size).toBe(2)
 
     collector.forget('src/A.tsx')
     expect(collector.size).toBe(1)
-    expect(Object.values(collector.toJSON().modules)).toEqual([{ file: 'src/B.tsx' }])
+    expect(Object.values(collector.toJSON().modules)).toEqual([
+      { file: 'src/B.tsx', scope: 'payments-dash' },
+    ])
   })
 })

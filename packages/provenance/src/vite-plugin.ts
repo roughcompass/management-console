@@ -40,6 +40,12 @@ export interface ProvenanceViteOptions extends CollectorOptions {
   contextLock?: Omit<ContextLockInput, 'repo'> & { repo?: ContextLockInput['repo'] }
   /** Extra build artifacts to expose for build-artifact anchors. */
   artifacts?: BuildArtifactEntry[]
+  /**
+   * Origin allowed to read the published files in dev. A federated shell reads
+   * every remote's manifest cross-origin, so this defaults to open: these are
+   * build metadata for a preview, not application data.
+   */
+  allowOrigin?: string | false
 }
 
 export interface ProvenanceBundle {
@@ -56,6 +62,12 @@ function json(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
+function serve(res: ServerResponseLike, body: string, allowOrigin: string | false): void {
+  if (allowOrigin !== false) res.setHeader('Access-Control-Allow-Origin', allowOrigin)
+  res.setHeader('Content-Type', 'application/json')
+  res.end(body)
+}
+
 /**
  * Wires the build-time half of the provenance contract: the babel plugin that
  * marks host elements, and the bundler plugin that publishes the manifest,
@@ -67,6 +79,7 @@ export function createProvenance(options: ProvenanceViteOptions): ProvenanceBund
   const lockPath = manifestPath.replace(/manifest\.json$/, 'context-lock.json')
   const reportPath = manifestPath.replace(/manifest\.json$/, 'build-report.json')
   let root = options.root
+  const allowOrigin = options.allowOrigin ?? '*'
 
   const babelPlugin = createBabelPlugin({
     collector,
@@ -83,7 +96,7 @@ export function createProvenance(options: ProvenanceViteOptions): ProvenanceBund
   }
 
   const reportOf = (extra: BuildArtifactEntry[] = []): BuildReport => ({
-    buildId: collector.toJSON().buildId,
+    buildId: collector.buildId,
     commit: options.commit,
     generatedAt: new Date().toISOString(),
     artifacts: [...(options.artifacts ?? []), ...extra],
@@ -98,8 +111,7 @@ export function createProvenance(options: ProvenanceViteOptions): ProvenanceBund
       // In dev the manifest grows as modules are transformed, so it is served
       // live rather than written once.
       server.middlewares.use(`/${manifestPath}`, (_req, res) => {
-        res.setHeader('Content-Type', 'application/json')
-        res.end(json(collector.toJSON()))
+        serve(res, json(collector.toJSON()), allowOrigin)
       })
       server.middlewares.use(`/${lockPath}`, (_req, res) => {
         const lock = lockOf()
@@ -108,12 +120,10 @@ export function createProvenance(options: ProvenanceViteOptions): ProvenanceBund
           res.end('{}')
           return
         }
-        res.setHeader('Content-Type', 'application/json')
-        res.end(json(lock))
+        serve(res, json(lock), allowOrigin)
       })
       server.middlewares.use(`/${reportPath}`, (_req, res) => {
-        res.setHeader('Content-Type', 'application/json')
-        res.end(json(reportOf()))
+        serve(res, json(reportOf()), allowOrigin)
       })
     },
     handleHotUpdate(ctx) {

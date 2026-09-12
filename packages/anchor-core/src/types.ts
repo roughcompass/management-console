@@ -57,6 +57,8 @@ export const ATTR = {
 export interface ProvenanceRef {
   /** Raw attribute value, e.g. "a1b2c3d4:42:8". */
   token: string
+  /** Which federated participant built this node. */
+  scope: string
   repo: string
   commit: string
   file: string
@@ -265,8 +267,16 @@ export interface CommentThread {
 // Provenance manifest (emitted by the build-time plugin)
 // --------------------------------------------------------------------------
 
+/** Build identity of one federated participant: an MFE, or the shell itself. */
+export interface ProvenanceScopeEntry {
+  repo: string
+  commit: string
+  buildId: string
+}
+
 export interface ProvenanceModuleEntry {
   file: string
+  scope: string
 }
 
 export interface ProvenanceNodeEntry {
@@ -277,11 +287,14 @@ export interface ProvenanceNodeEntry {
   column: number
 }
 
+/**
+ * Under Module Federation each remote is built separately and publishes its own
+ * manifest. The shell merges them, so the manifest is keyed by scope rather
+ * than carrying one repo and commit for everything on the page.
+ */
 export interface ProvenanceManifest {
   version: 1
-  repo: string
-  commit: string
-  buildId: string
+  scopes: Record<string, ProvenanceScopeEntry>
   modules: Record<string, ProvenanceModuleEntry>
   nodes: Record<string, ProvenanceNodeEntry>
 }

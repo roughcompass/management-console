@@ -32,10 +32,8 @@ describe('semantic path', () => {
     // zone. Neither belongs in the address of a node inside an MFE.
     const manifest: ProvenanceManifest = {
       version: 1,
-      repo: 'roughcompass/management-console',
-      commit: 'a41c9ef',
-      buildId: 'build-a',
-      modules: { m9: { file: 'src/App.tsx' } },
+      scopes: { shell: { repo: 'roughcompass/management-console', commit: 'a41c9ef', buildId: 'build-a' } },
+      modules: { m9: { file: 'src/App.tsx', scope: 'shell' } },
       nodes: {
         'm9:1:1': { module: 'm9', component: 'App', element: 'div', line: 1, column: 1 },
         'm9:2:2': { module: 'm9', component: 'Frame', element: 'main', line: 2, column: 2 },

@@ -2,6 +2,12 @@ import { fnv1a } from '@adl/anchor-core'
 import type { ProvenanceManifest, ProvenanceNodeEntry } from '@adl/anchor-core'
 
 export interface CollectorOptions {
+  /**
+   * The federated participant this build belongs to: an MFE name, or the shell.
+   * Module ids are hashed with it, so two remotes that both ship a `src/App.tsx`
+   * stay distinct once the shell merges their manifests.
+   */
+  scope: string
   repo: string
   commit: string
   buildId?: string
@@ -21,28 +27,32 @@ export interface RecordInput {
  * it as an asset in build.
  */
 export class ManifestCollector {
+  readonly scope: string
+  readonly buildId: string
   private manifest: ProvenanceManifest
 
   constructor(options: CollectorOptions) {
+    this.scope = options.scope
+    this.buildId = options.buildId ?? `${options.commit}-${Date.now().toString(36)}`
     this.manifest = {
       version: 1,
-      repo: options.repo,
-      commit: options.commit,
-      buildId: options.buildId ?? `${options.commit}-${Date.now().toString(36)}`,
+      scopes: {
+        [options.scope]: { repo: options.repo, commit: options.commit, buildId: this.buildId },
+      },
       modules: {},
       nodes: {},
     }
   }
 
-  /** Short, stable, path-derived. Same file always yields the same module id. */
+  /** Short, stable, scope-qualified. Same file in the same MFE, same id. */
   moduleId(file: string): string {
-    return fnv1a(file).slice(0, 8)
+    return fnv1a(`${this.scope}:${file}`).slice(0, 8)
   }
 
   record(input: RecordInput): { token: string; moduleId: string } {
     const moduleId = this.moduleId(input.file)
     const token = `${moduleId}:${input.line}:${input.column}`
-    this.manifest.modules[moduleId] = { file: input.file }
+    this.manifest.modules[moduleId] = { file: input.file, scope: this.scope }
     const entry: ProvenanceNodeEntry = {
       module: moduleId,
       component: input.component,
