@@ -6,8 +6,11 @@ export {
   formatProvToken,
   getProvenanceManifest,
   loadProvenanceManifest,
+  loadProvenanceManifests,
   lookupFile,
   lookupNode,
+  lookupScope,
+  mergeProvenanceManifests,
   parseProvToken,
   provAttr,
   setProvenanceManifest,
@@ -29,6 +32,8 @@ export {
 } from './index-dom.js'
 export type { IndexedNode, ResolutionContext, ResolutionContextOptions } from './index-dom.js'
 export { captureAnchor, captureNonVisualAnchor } from './capture.js'
+export { captureElementImage } from './screenshot.js'
+export type { ScreenshotOptions } from './screenshot.js'
 export type { CaptureOptions } from './capture.js'
 export { STRATEGY_CHAIN, resolveAll, resolveAnchor } from './resolve.js'
 export type { ResolveOptions } from './resolve.js'
