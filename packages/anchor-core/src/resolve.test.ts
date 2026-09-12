@@ -138,6 +138,63 @@ describe('resolution chain', () => {
     expect(resolution.attempts[0]!.reason).toContain('SummaryCard')
   })
 
+  it('will not confidently match a sibling that shares the path but nothing else', () => {
+    // Two plain divs inside one component share a semantic path exactly. What
+    // the node carries itself - its own text, its token bindings - is the only
+    // thing that tells them apart.
+    const html = (card: string) => `
+      <div data-frame="cib-frame">
+        <main data-zone="main">
+          <section data-mfe="payments-dash" data-mfe-version="2.4.1" data-prov="m1:40:7">
+            ${card}
+            <div class="head">Payments</div>
+          </section>
+        </main>
+      </div>`
+    const root = mount(html('<div class="card" data-tokens="type.display.sm=font-size"></div>'))
+    const ctx = createResolutionContext({ root, manifest: manifestV1, lock: lockV1 })
+    const anchor = captureAnchor(root.querySelector('.card')!, ctx)
+    expect(anchor.capturedLevel).toBe('semantic')
+
+    // The rebuild drops the commented node and keeps its sibling.
+    const rebuilt = mount(html(''))
+    const after = createResolutionContext({ root: rebuilt, manifest: manifestV1, lock: lockV1 })
+    const resolution = resolveAnchor(anchor, after)
+
+    // The region is still right, so the comment stays attached - but it is
+    // reported as degraded with the contradiction named, never as resolved.
+    expect(resolution.status).toBe('degraded')
+    expect(resolution.level).toBe('semantic')
+    expect(resolution.confidence).toBeLessThan(0.8)
+    expect(resolution.attempts.at(-1)!.reason).toContain('text or tokens changed')
+  })
+
+  it('addresses a node rendered by an uninstrumented design-system component', () => {
+    // The wrapper comes from a component library, so it carries no provenance
+    // of its own; its path still runs through the app component that placed it.
+    const html = (extra: string) => `
+      <div data-frame="cib-frame">
+        <main data-zone="main">
+          <section data-mfe="payments-dash" data-mfe-version="2.4.1">
+            <span data-prov="m1:40:7"></span>
+            <div class="saltCard" data-tokens="color.surface.raised=background-color">${extra}</div>
+          </section>
+        </main>
+      </div>`
+    const root = mount(html('<p>Unsettled exposure</p>'))
+    const ctx = createResolutionContext({ root, manifest: manifestV1, lock: lockV1 })
+    const anchor = captureAnchor(root.querySelector('.saltCard')!, ctx)
+    expect(anchor.provenance).toBeUndefined()
+    expect(anchor.capturedLevel).toBe('semantic')
+
+    const rebuilt = mount(html('<p>Unsettled exposure</p><small>2 of 4</small>'))
+    const after = createResolutionContext({ root: rebuilt, manifest: manifestV1, lock: lockV1 })
+    const resolution = resolveAnchor(anchor, after)
+
+    expect(resolution.level).toBe('semantic')
+    expect(resolution.element).toBe(rebuilt.querySelector('.saltCard'))
+  })
+
   it('uses the visual level only under the same theme and viewport', () => {
     const root = mount('<div><div id="target"><div id="inner"></div></div></div>')
     const target = root.querySelector('#target')!
