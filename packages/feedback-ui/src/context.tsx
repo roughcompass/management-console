@@ -64,6 +64,11 @@ export interface FeedbackContextValue {
   commentOnTarget(target: NonVisualTarget, body: string, options?: { layerHint?: Layer }): CommentThread
   reply(threadId: string, body: string): void
   setThreadStatus(threadId: string, status: CommentThread['status']): void
+  // New: track which comments are included in submission
+  selectedThreadIds: Set<string>
+  toggleThreadSelection(threadId: string): void
+  // New: add free-form feedback not tied to an element
+  addGeneralFeedback(body: string): CommentThread
 }
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null)
@@ -108,6 +113,7 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
   const [picking, setPicking] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedThreadId, selectThread] = useState<string | null>(null)
+  const [selectedThreadIds, setSelectedThreadIds] = useState(new Set<string>())
 
   const bump = useCallback(() => setVersion((v) => v + 1), [])
 
@@ -269,6 +275,36 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     [store],
   )
 
+  const toggleThreadSelection = useCallback(
+    (threadId: string) => {
+      setSelectedThreadIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(threadId)) next.delete(threadId)
+        else next.add(threadId)
+        return next
+      })
+    },
+    [],
+  )
+
+  const addGeneralFeedback = useCallback(
+    (body: string) => {
+      const target: NonVisualTarget = {
+        kind: 'runtime-event',
+        channel: 'general',
+        type: 'feedback',
+      }
+      const ctx = ctxRef.current ?? buildContext(lock, manifest)
+      const anchor = captureNonVisualAnchor(target, ctx)
+      const thread = store.createThread({ anchor, author: actor, body, layerHint: 'product' })
+      thread.resolution = resolveAnchor(anchor, ctx)
+      thread.anchorStatus = thread.resolution.status
+      bump()
+      return thread
+    },
+    [actor, buildContext, bump, lock, manifest, store],
+  )
+
   const value = useMemo<FeedbackContextValue>(() => {
     void version
     return {
@@ -296,6 +332,9 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
       commentOnTarget,
       reply,
       setThreadStatus,
+      selectedThreadIds,
+      toggleThreadSelection,
+      addGeneralFeedback,
     }
   }, [
     actor,
@@ -315,6 +354,9 @@ export function FeedbackProvider(props: FeedbackProviderProps): ReactNode {
     reply,
     selectedThreadId,
     setThreadStatus,
+    selectedThreadIds,
+    toggleThreadSelection,
+    addGeneralFeedback,
     store,
     version,
   ])

@@ -110,6 +110,7 @@ export function FeedbackLayer(): ReactNode {
   const hoveredRect = hovered?.getBoundingClientRect()
   const hoveredLabel = hovered ? pathOf(hovered).split(' > ').slice(-2).join(' > ') : ''
   const open = threads.filter((thread) => thread.status === 'open')
+  const visual = threads.filter((t) => t.anchor.anchorType === 'visual-node')
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -145,7 +146,7 @@ export function FeedbackLayer(): ReactNode {
         </div>
       ) : null}
 
-      {open.map((thread, index) => {
+      {visual.map((thread, index) => {
         const element = elementFor(thread.id)
         if (!element) return null
         const rect = element.getBoundingClientRect()
@@ -156,9 +157,14 @@ export function FeedbackLayer(): ReactNode {
             type="button"
             className="adl-pin"
             data-status={thread.anchorStatus}
+            data-thread-status={thread.status}
             data-selected={selectedThreadId === thread.id}
-            style={{ left: rect.left, top: rect.top }}
-            title={thread.comments[0]?.body}
+            style={{
+              left: rect.left,
+              top: rect.top,
+              opacity: thread.status === 'resolved' ? 0.5 : 1,
+            }}
+            title={`${thread.comments.length} comment${thread.comments.length !== 1 ? 's' : ''}: ${thread.comments[0]?.body ?? ''}`}
             onClick={() => {
               selectThread(thread.id)
               setPanelOpen(true)

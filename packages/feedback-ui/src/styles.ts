@@ -167,6 +167,12 @@ export const feedbackStyles = `
   font: inherit;
 }
 .adl-textarea { resize: vertical; min-height: 64px; }
+.adl-input[type='checkbox'],
+.adl-input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
 .adl-tab {
   flex: 1;
   padding: 6px 4px;

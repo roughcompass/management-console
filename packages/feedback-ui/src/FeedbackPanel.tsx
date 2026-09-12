@@ -5,13 +5,15 @@ import { useFeedback } from './context.js'
 import { AnchorSummary, LevelChip, Metric, StaleNotice, StatusChip, percent } from './parts.js'
 import { useFeedbackStyles } from './styles.js'
 
-type TabId = 'comments' | 'network' | 'runtime' | 'build'
+type TabId = 'comments' | 'general' | 'network' | 'runtime' | 'build' | 'submit'
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'comments', label: 'Comments' },
+  { id: 'general', label: 'General' },
   { id: 'network', label: 'Network' },
   { id: 'runtime', label: 'Runtime' },
   { id: 'build', label: 'Build' },
+  { id: 'submit', label: 'Submit' },
 ]
 
 /**
@@ -86,8 +88,9 @@ function RowComposer({ onSubmit }: { onSubmit: (body: string) => void }): ReactN
 }
 
 function ThreadCard({ thread, index }: { thread: CommentThread; index: number }): ReactNode {
-  const { reply, setThreadStatus, selectThread, selectedThreadId } = useFeedback()
+  const { reply, setThreadStatus, selectThread, selectedThreadId, selectedThreadIds, toggleThreadSelection } = useFeedback()
   const [draft, setDraft] = useState('')
+  const isSelectedForSubmission = selectedThreadIds.has(thread.id)
 
   return (
     <RowCard
@@ -97,12 +100,25 @@ function ThreadCard({ thread, index }: { thread: CommentThread; index: number })
     >
       <div className="adl-row-between">
         <div className="adl-row">
+          <input
+            type="checkbox"
+            checked={isSelectedForSubmission}
+            onChange={(e) => {
+              e.stopPropagation()
+              toggleThreadSelection(thread.id)
+            }}
+            aria-label={`Include comment ${index + 1} in submission`}
+            style={{ cursor: 'pointer' }}
+          />
           <span className="adl-chip">#{index + 1}</span>
           <StatusChip status={thread.anchorStatus} />
           <LevelChip resolution={thread.resolution} />
         </div>
         <button type="button" className="adl-btn"
-          onClick={() => setThreadStatus(thread.id, thread.status === 'open' ? 'resolved' : 'open')}
+          onClick={(e) => {
+            e.stopPropagation()
+            setThreadStatus(thread.id, thread.status === 'open' ? 'resolved' : 'open')
+          }}
         >
           {thread.status === 'open' ? 'Resolve' : 'Reopen'}
         </button>
@@ -147,6 +163,173 @@ function ThreadCard({ thread, index }: { thread: CommentThread; index: number })
         />
       </form>
     </RowCard>
+  )
+}
+
+function GeneralFeedbackTab(): ReactNode {
+  const { addGeneralFeedback, threads, selectedThreadIds } = useFeedback()
+  const [open, setOpen] = useState(false)
+  const [body, setBody] = useState('')
+
+  const generalThreads = threads.filter(
+    (t) => t.anchor.target?.kind === 'runtime-event' && t.anchor.target.channel === 'general',
+  )
+
+  return (
+    <>
+      <p className="adl-muted">Feedback not tied to specific elements</p>
+
+      {!open ? (
+        <button
+          type="button"
+          className="adl-btn"
+          onClick={() => setOpen(true)}
+          style={{ marginBottom: 12 }}
+        >
+          Add general feedback
+        </button>
+      ) : (
+        <form
+          style={{ marginBottom: 12 }}
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!body.trim()) return
+            addGeneralFeedback(body.trim())
+            setBody('')
+            setOpen(false)
+          }}
+        >
+          <textarea
+            className="adl-input"
+            aria-label="general feedback"
+            autoFocus
+            value={body}
+            placeholder="Share feedback about spacing, patterns, form usage, etc."
+            onChange={(event) => setBody(event.target.value)}
+            style={{ minHeight: 80, marginBottom: 6 }}
+          />
+          <div className="adl-row" style={{ justifyContent: 'flex-end', gap: 6 }}>
+            <button
+              type="button"
+              className="adl-btn"
+              onClick={() => {
+                setOpen(false)
+                setBody('')
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="adl-btn" data-variant="primary">
+              Save
+            </button>
+          </div>
+        </form>
+      )}
+
+      {generalThreads.length > 0 ? (
+        <ul className="adl-list">
+          {generalThreads.map((thread, index) => {
+            const isSelected = selectedThreadIds.has(thread.id)
+            return (
+              <li
+                key={thread.id}
+                className="adl-card"
+                style={{ marginBottom: 8 }}
+              >
+                <div className="adl-row-between">
+                  <div className="adl-row">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      aria-label={`Include general feedback in submission`}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span className="adl-chip">{thread.comments[0]?.body}</span>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </>
+  )
+}
+
+function SubmissionTab(): ReactNode {
+  const { threads, selectedThreadIds, lock } = useFeedback()
+  const selectedThreads = threads.filter((t) => selectedThreadIds.has(t.id))
+  const summary = {
+    total: selectedThreads.length,
+    elementComments: selectedThreads.filter((t) => t.anchor.anchorType === 'visual-node').length,
+    generalFeedback: selectedThreads.filter((t) => t.anchor.target?.kind === 'runtime-event' && t.anchor.target.channel === 'general').length,
+    orphaned: selectedThreads.filter((t) => t.anchorStatus === 'orphaned').length,
+    degraded: selectedThreads.filter((t) => t.anchorStatus === 'degraded').length,
+    resolved: selectedThreads.filter((t) => t.anchorStatus === 'resolved').length,
+  }
+
+  if (selectedThreads.length === 0) {
+    return (
+      <p className="adl-muted">
+        Select comments to include in your feedback submission. Only checked comments will be
+        sent to the agent for processing.
+      </p>
+    )
+  }
+
+  return (
+    <>
+      <div className="adl-card" style={{ marginBottom: 16 }}>
+        <span className="adl-metric-label">Submission Summary</span>
+        <ul className="adl-list adl-mono" style={{ marginTop: 8 }}>
+          <li>Total comments: {summary.total}</li>
+          <li>Element comments: {summary.elementComments}</li>
+          <li>General feedback: {summary.generalFeedback}</li>
+          <li>
+            Anchor status: {summary.resolved} resolved, {summary.degraded} degraded, {summary.orphaned}{' '}
+            orphaned
+          </li>
+          <li>Lock: {lock.id.slice(0, 8)}</li>
+        </ul>
+      </div>
+
+      <div className="adl-card" style={{ marginBottom: 16 }}>
+        <span className="adl-metric-label">Selected Comments</span>
+        <ul className="adl-list">
+          {selectedThreads.map((thread, index) => (
+            <li key={thread.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--salt-border-secondary)' }}>
+              <div className="adl-row" style={{ marginBottom: 4 }}>
+                <span className="adl-chip">#{index + 1}</span>
+                <StatusChip status={thread.anchorStatus} />
+              </div>
+              <AnchorSummary anchor={thread.anchor} resolution={thread.resolution} />
+              <div style={{ marginTop: 4 }}>
+                {thread.comments.map((comment) => (
+                  <div key={comment.id} className="adl-label">
+                    {comment.author.name}: {comment.body}
+                  </div>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <button
+        type="button"
+        className="adl-btn"
+        data-variant="primary"
+        style={{ width: '100%', padding: 12 }}
+        onClick={() => {
+          // TODO: Connect to agent/workflow
+          console.log('Submitting feedback:', selectedThreads)
+          alert(`Submitting ${selectedThreads.length} comments to agent for processing`)
+        }}
+      >
+        Submit {selectedThreads.length} comment{selectedThreads.length !== 1 ? 's' : ''} to Agent
+      </button>
+    </>
   )
 }
 
@@ -372,9 +555,11 @@ export function FeedbackPanel(): ReactNode {
       </nav>
       <div className="adl-panel-body" role="tabpanel">
         {tab === 'comments' ? <CommentsTab /> : null}
+        {tab === 'general' ? <GeneralFeedbackTab /> : null}
         {tab === 'network' ? <NetworkTab /> : null}
         {tab === 'runtime' ? <RuntimeTab /> : null}
         {tab === 'build' ? <BuildTab /> : null}
+        {tab === 'submit' ? <SubmissionTab /> : null}
       </div>
     </aside>
   )
