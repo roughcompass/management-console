@@ -95,13 +95,14 @@ and returns the snapshot for that build:
 }
 ```
 
-Exactly one pass per build is metered. A federated preview does not arrive at
-once — remotes resolve lazily, data lands after them — so the toolbar waits for
-the preview DOM to go quiet before the metered pass. Passes triggered by ordinary
-DOM churn afterwards still re-resolve anchors, keeping pins attached as content
-moves, but pass `record: false` and are not counted. Without that split the
-orphan rate reports whatever the page looked like mid-render, which on a
-federated preview is "everything is missing".
+A metered pass counts each open thread once per build, and measuring the same
+build again replaces that thread's sample rather than adding to it. A federated
+preview does not arrive at once — remotes resolve lazily, data lands after them
+— so the toolbar waits for the preview DOM to go quiet before the metered pass;
+if a remote still lands after that, the next metered pass corrects the number
+instead of averaging a half-rendered page into it. Passes triggered by ordinary
+DOM churn re-resolve anchors, keeping pins attached as content moves, but pass
+`record: false` and are not counted.
 
 `byLevel` is the interesting column over time. It says how much of the feedback
 each level is actually carrying, which is the argument for or against the cost of

@@ -169,10 +169,12 @@ export class FeedbackStore {
       thread.stale = isStale(thread.anchor.contextLockId, ctx.lock)
       const capturedLock = this.knownLocks.get(thread.anchor.contextLockId)
       thread.staleAgainst = capturedLock ? diffContextLock(capturedLock, ctx.lock) : undefined
-      // Only one pass per build is metered. A preview re-resolves whenever its
-      // DOM churns - a lazy remote arriving, data loading - and counting those
-      // would report an orphan rate for a half-rendered page.
-      if (meta.record !== false) this.meter.record(resolution, { buildId, lockId: ctx.lock.id })
+      // Unmetered passes only keep pins attached while the DOM churns - a lazy
+      // remote arriving, data loading. Metered passes count each thread once
+      // per build, so measuring a build twice corrects it rather than skewing it.
+      if (meta.record !== false) {
+        this.meter.record(resolution, { buildId, lockId: ctx.lock.id, threadId: thread.id })
+      }
     }
 
     const snapshot = this.meter.snapshot(buildId)

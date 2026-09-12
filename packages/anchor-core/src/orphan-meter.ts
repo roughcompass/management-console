@@ -17,6 +17,7 @@ export interface OrphanSnapshot {
 export interface OrphanSample {
   buildId: string
   lockId: string
+  threadId: string
   status: AnchorStatus
   level: AnchorLevel | null
   confidence: number
@@ -41,16 +42,29 @@ export class OrphanMeter {
   private samples: OrphanSample[] = []
   private listeners = new Set<OrphanListener>()
 
-  record(resolution: AnchorResolution, meta: { buildId: string; lockId: string }): OrphanSample {
+  /**
+   * One sample per thread per build, latest wins. A federated preview can be
+   * measured before its last remote has painted; the pass that follows must
+   * correct that reading, not sit next to it in the average.
+   */
+  record(
+    resolution: AnchorResolution,
+    meta: { buildId: string; lockId: string; threadId: string },
+  ): OrphanSample {
     const sample: OrphanSample = {
       buildId: meta.buildId,
       lockId: meta.lockId,
+      threadId: meta.threadId,
       status: resolution.status,
       level: resolution.level,
       confidence: resolution.confidence,
       at: resolution.resolvedAt,
     }
-    this.samples.push(sample)
+    const index = this.samples.findIndex(
+      (s) => s.buildId === meta.buildId && s.threadId === meta.threadId,
+    )
+    if (index === -1) this.samples.push(sample)
+    else this.samples[index] = sample
     for (const listener of this.listeners) listener(sample)
     return sample
   }

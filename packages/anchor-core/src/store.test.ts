@@ -99,6 +99,19 @@ describe('feedback store', () => {
     expect(store.meter.snapshot().total).toBe(2)
   })
 
+  it('lets a later pass on the same build correct an earlier one', () => {
+    const { store, ctx, at } = seed()
+    store.createThread({ anchor: at(`[data-de-provenance-id="${ID.heading}"]`), author: designer, body: 'needs a heading above it' })
+
+    // A lazy remote has not painted yet: the pass sees the old DOM and calls it resolved.
+    expect(store.reanchor(ctx, { buildId: 'build-b' }).orphanRate).toBe(0)
+    // The remote lands and the heading is gone. The build's number is what the
+    // last look said, not the average of the two.
+    const snapshot = store.reanchor(rebuild(), { buildId: 'build-b' })
+    expect(snapshot).toMatchObject({ total: 1, orphaned: 1, orphanRate: 1 })
+    expect(store.meter.builds()).toEqual(['build-b'])
+  })
+
   it('notifies subscribers so a preview can react without polling', () => {
     const { store, at } = seed()
     const events: string[] = []
